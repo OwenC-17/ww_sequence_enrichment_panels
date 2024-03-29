@@ -1,0 +1,5 @@
+#ARG	query-start	query-end	read_id	predicted_ARG-class	best-hit	probability	identity	alignment-length	alignment-bitscore	alignment-evalue	counts
+MDTC	38	80	LH00285:5:227VVYLT3:6:1220:30615:13257	multidrug	NC_002695.1.916586.p01|FEATURES|mdtC|multidrug|mdtC	0.306802005875	79.1	43	70.1	1.8e-13	1
+MDTC	38	80	LH00285:5:227VVYLT3:6:1220:30615:13257	aminocoumarin	NC_002695.1.916586.p01|FEATURES|mdtC|multidrug|mdtC	0.691182793356	79.1	43	70.1	1.8e-13	1
+MEXN	403	479	LH00285:5:227VVYLT3:6:2281:33306:16798	multidrug	BAE06006.1|FEATURES|mexN|multidrug|mexN	0.297098536281	50.6	77	80.9	1.8e-16	1
+MEXN	403	479	LH00285:5:227VVYLT3:6:2281:33306:16798	aminocoumarin	BAE06006.1|FEATURES|mexN|multidrug|mexN	0.701572536113	50.6	77	80.9	1.8e-16	1
