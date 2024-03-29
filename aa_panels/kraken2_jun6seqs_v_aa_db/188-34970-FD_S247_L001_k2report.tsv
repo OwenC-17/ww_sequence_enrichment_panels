@@ -1,0 +1,61 @@
+ 99.90	2768054	2768054	U	0	unclassified
+  0.10	2731	0	R	1	root
+  0.10	2731	0	D	10239	  Viruses
+  0.10	2663	0	D1	2559587	    Riboviria
+  0.10	2635	0	K	2732396	      Orthornavirae
+  0.09	2631	0	P	2732408	        Pisuviricota
+  0.09	2553	0	C	2732507	          Stelpaviricetes
+  0.09	2553	0	O	2732551	            Stellavirales
+  0.09	2553	0	F	39733	              Astroviridae
+  0.09	2553	0	G	249588	                Mamastrovirus
+  0.09	2553	0	S	1239565	                  Mamastrovirus 1
+  0.09	2553	2553	S1	12456	                    Human astrovirus 1
+  0.00	78	0	C	2732506	          Pisoniviricetes
+  0.00	78	0	O	464095	            Picornavirales
+  0.00	78	0	F	11974	              Caliciviridae
+  0.00	78	0	G	95341	                Sapovirus
+  0.00	78	0	S	95342	                  Sapporo virus
+  0.00	78	0	S1	280756	                    Sapovirus isolates
+  0.00	78	78	S2	1280920	                      Sapovirus Hu/Nagoya/NGY-1/2012/JPN
+  0.00	4	0	P	2732405	        Duplornaviricota
+  0.00	4	0	C	2732459	          Resentoviricetes
+  0.00	4	0	O	2732541	            Reovirales
+  0.00	4	0	F	2946186	              Sedoreoviridae
+  0.00	4	0	G	10912	                Rotavirus
+  0.00	4	0	S	36427	                  Rotavirus C
+  0.00	4	4	S1	10943	                    Human rotavirus C
+  0.00	28	0	K	2732397	      Pararnavirae
+  0.00	28	0	P	2732409	        Artverviricota
+  0.00	28	0	C	2732514	          Revtraviricetes
+  0.00	28	0	O	2169561	            Ortervirales
+  0.00	28	0	F	11632	              Retroviridae
+  0.00	28	0	F1	327045	                Orthoretrovirinae
+  0.00	28	0	G	11646	                  Lentivirus
+  0.00	28	28	S	11676	                    Human immunodeficiency virus 1
+  0.00	60	0	D1	2731342	    Monodnaviria
+  0.00	60	0	K	2732092	      Shotokuvirae
+  0.00	60	0	P	2732415	        Cossaviricota
+  0.00	51	0	C	2732422	          Quintoviricetes
+  0.00	51	0	O	2732534	            Piccovirales
+  0.00	51	0	F	10780	              Parvoviridae
+  0.00	51	0	F1	40119	                Parvovirinae
+  0.00	29	0	G	10803	                  Dependoparvovirus
+  0.00	29	0	G1	341670	                    unclassified Dependoparvovirus
+  0.00	29	29	S	272636	                      Adeno-associated virus
+  0.00	22	0	G	1506574	                  Protoparvovirus
+  0.00	22	0	S	1511908	                    Rodent protoparvovirus 1
+  0.00	22	22	S1	10794	                      Minute virus of mice
+  0.00	9	0	C	2732421	          Papovaviricetes
+  0.00	9	0	O	2732532	            Sepolyvirales
+  0.00	9	0	F	151341	              Polyomaviridae
+  0.00	9	0	G	1891714	                Betapolyomavirus
+  0.00	9	9	S	1891767	                  Betapolyomavirus macacae
+  0.00	8	0	D1	2731341	    Duplodnaviria
+  0.00	8	0	K	2731360	      Heunggongvirae
+  0.00	8	0	P	2731361	        Peploviricota
+  0.00	8	0	C	2731363	          Herviviricetes
+  0.00	8	0	O	548681	            Herpesvirales
+  0.00	8	0	F	10292	              Herpesviridae
+  0.00	8	0	F1	10374	                Gammaherpesvirinae
+  0.00	8	0	G	10375	                  Lymphocryptovirus
+  0.00	8	8	S	10376	                    Human gammaherpesvirus 4

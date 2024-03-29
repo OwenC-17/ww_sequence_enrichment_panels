@@ -6,7 +6,7 @@ library(stringr)
 
 
 #Run script from directory where outputs are located
-setwd("C:/Users/fanta/Dropbox/PC (2)/Documents/OBrienMetagenome/pre_enrichment/kraken2_out/")
+setwd("~/GitHub/ww_sequence_enrichment_panels/pre_enrichment/kraken2_out")
 
 
 

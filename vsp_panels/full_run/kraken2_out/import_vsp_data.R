@@ -6,8 +6,7 @@ library(stringr)
 
 
 #Run script from directory where outputs are located
-setwd("C:/Users/fanta/Dropbox/PC (2)/Documents/OBrienMetagenome/vsp_panels/full_run/kraken2_out")
-
+setwd("~/GitHub/ww_sequence_enrichment_panels/vsp_panels/full_run/kraken2_out")
 
 
 #NOTE: THE DATA FROM THE FOLLOWING IMPORT HAS BEEN IMPORTED AND SAVED AS 

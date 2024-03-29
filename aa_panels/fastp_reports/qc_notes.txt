@@ -1,0 +1,5 @@
+32989_UB has only 3370 reads (2696 after filtering) 
+
+34970_FD has only 47570 reads (44910 after filtering) 
+
+(These are the two samples that performed poorly on initial QC sequencing)

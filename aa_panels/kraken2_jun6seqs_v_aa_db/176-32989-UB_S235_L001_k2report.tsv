@@ -1,0 +1,12 @@
+100.00	250213	250213	U	0	unclassified
+  0.00	2	0	R	1	root
+  0.00	2	0	D	10239	  Viruses
+  0.00	2	0	D1	2732004	    Varidnaviria
+  0.00	2	0	K	2732005	      Bamfordvirae
+  0.00	2	0	P	2732008	        Preplasmiviricota
+  0.00	2	0	C	2732529	          Tectiliviricetes
+  0.00	2	0	O	2732559	            Rowavirales
+  0.00	2	0	F	10508	              Adenoviridae
+  0.00	2	0	G	10509	                Mastadenovirus
+  0.00	2	0	S	130309	                  Human mastadenovirus F
+  0.00	2	2	S1	10524	                    Human adenovirus 41

@@ -6,8 +6,7 @@ library(stringr)
 
 
 #Run script from directory where outputs are located
-setwd("C:/Users/fanta/Dropbox/PC (2)/Documents/OBrienMetagenome/rpip_panels/kraken2_reports/")
-
+setwd("~/GitHub/ww_sequence_enrichment_panels/rpip_panels/kraken2_reports/")
 
 
 #This will merge several kraken2 reports into one df
