@@ -90,39 +90,62 @@ separate_all_k2_outputs <- function(k2_out_dir, readlist_to_use, labeled_dest) {
       select(status:mapping) %>%
       as_tibble()
     vroom_write(x = rrnaOnly_table, file = rrnaOnly_filename, delim = "\t", col_names = FALSE, progress = TRUE)
-    rm(nonrrna_table)
+    rm(rrnaOnly_table)
   }
 }
 
 ##############
 
-
+#Untargeted
 untargeted_nonr_readlist <- import_readlist(untargeted_nonrrna_loc)
 
 untargeted_k2out_001 <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/001-36397-FA-RP_S1_L006_k2out.out"
+untargeted_k2out_001_90conf <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/001-36397-FA-RP_S1_L006_90confk2out.out"
 
 
 rm(labeled_untargeted_k2out_001)
 labeled_untargeted_k2out_001 <- label_k2_nonrrna(untargeted_k2out_001, untargeted_nonr_readlist)
+labeled_untargeted_k2out_001_90conf <- label_k2_nonrrna(untargeted_k2out_001_90conf, untargeted_nonr_readlist)
+
 
 untargeted_k2out_dir <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/"
 untargeted_k2labeled_dir <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/rrna_labeled/"
 
+untargeted_k2out_dir_90conf <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/"
+untargeted_k2labeled_dir_90conf <- "../../../cowen20/targeted_panels/untargeted/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/rrna_labeled/"
+
+
 separate_all_k2_outputs(untargeted_k2out_dir, untargeted_nonr_readlist, untargeted_k2labeled_dir)
 rm(untargeted_nonr_readlist)
 
+separate_all_k2_outputs(untargeted_k2out_dir_90conf, untargeted_nonr_readlist, untargeted_k2labeled_dir_90conf)
+rm(untargeted_nonr_readlist)
+
+###########
+#VSP
 vsp_k2out_dir <- "../../../cowen20/targeted_panels/vsp_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/"
 vsp_k2labeled_dir <- "../../../cowen20/targeted_panels/vsp_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/rrna_labeled/"
 
+vsp_k2out_dir_90conf <- "../../../cowen20/targeted_panels/vsp_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/"
+vsp_k2labeled_dir_90conf <- "../../../cowen20/targeted_panels/vsp_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/rrna_labeled/"
+
+
 vsp_nonr_readlist <- import_readlist(vsp_nonrrna_loc)
+
 separate_all_k2_outputs(vsp_k2out_dir, vsp_nonr_readlist, vsp_k2labeled_dir)
 rm(vsp_nonr_readlist)
+
+separate_all_k2_outputs(vsp_k2out_dir_90conf, vsp_nonr_readlist, vsp_k2labeled_dir_90conf)
+rm(vsp_nonr_readlist)
+
 
 rpip_k2out_dir <- "../../../cowen20/targeted_panels/rpip_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/"
 rpip_k2labeled_dir <- "../../../cowen20/targeted_panels/rpip_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/rrna_labeled/"
 
+rpip_k2out_dir_90conf <- "../../../cowen20/targeted_panels/rpip_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/"
+rpip_k2labeled_dir_90conf <- "../../../cowen20/targeted_panels/rpip_panels/raw_fastqs/fastp_out_no_dedup/kraken2_out/k2_nt_20240530/90conf/rrna_labeled/"
 
 
 rpip_nonr_readlist <- import_readlist(rpip_nonrrna_loc)
-separate_all_k2_outputs(rpip_k2out_dir, rpip_nonr_readlist, rpip_k2labeled_dir)
+separate_all_k2_outputs(rpip_k2out_dir_90conf, rpip_nonr_readlist, rpip_k2labeled_dir_90conf)
 
