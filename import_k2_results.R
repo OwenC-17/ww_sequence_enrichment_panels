@@ -186,4 +186,4 @@ rm(vsp_k2_reports_00conf, rpip_k2_reports_00conf, unt_k2_reports_00conf,
    vsp_k2_reports_90conf, rpip_k2_reports_90conf, unt_k2_reports_90conf)
 
 dir.create("imported_k2_reports")
-write_csv(all_k2_reports_anyConf, "imported_k2_reports/all_k2_reports_anyConf")
+write_csv(all_k2_reports_anyConf, "imported_k2_reports/all_k2_reports_anyConf.csv")
