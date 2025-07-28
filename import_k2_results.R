@@ -1,18 +1,23 @@
 library(tidyverse)
 library(zoo)
 
-
 #Main dir that contains all targeted panel results
 topdir <- "/projects/bios_microbe/cowen20/targeted_panels/"
 
-#VSP Subdir
-vsp_dir <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
+#Subdir with k2 reports from each panel
+vsp_dir_00conf <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
                   "kraken2_out/k2_nt_20240530/rrna_labeled/")
-rpip_dir <- paste0(topdir, "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
+rpip_dir_00conf <- paste0(topdir, "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
                    "kraken2_out/k2_nt_20240530/rrna_labeled/")
-unt_dir <- paste0(topdir, "untargeted/raw_fastqs/fastp_out_no_dedup/",
+unt_dir_00conf <- paste0(topdir, "untargeted/raw_fastqs/fastp_out_no_dedup/",
                   "kraken2_out/k2_nt_20240530/rrna_labeled/")
 
+vsp_dir_90conf <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
+                  "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
+rpip_dir_90conf <- paste0(topdir, "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
+                   "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
+unt_dir_90conf <- paste0(topdir, "untargeted/raw_fastqs/fastp_out_no_dedup/",
+                  "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
 
 generate_tax_table = function(tax_report_tsv) {
   ###create a table from a kraken2 taxonomy report whose location is specified
@@ -136,6 +141,49 @@ import_kraken2_summary <- function(directory, pattern) {
 }
 
 
-vsp_k2_reports <- import_kraken2_summary(vsp_dir, "report.tsv")
-rpip_k2_reports <- import_kraken2_summary(rpip_dir, "report.tsv")
-unt_k2_reports <- import_kraken2_summary(unt_dir, "report.tsv")
+#Import k2 reports with k2 confidence of 0.0 (default)
+vsp_k2_reports_00conf <- import_kraken2_summary(vsp_dir_00conf, "report.tsv")
+rpip_k2_reports_00conf <- import_kraken2_summary(rpip_dir_00conf, "report.tsv")
+unt_k2_reports_00conf <- import_kraken2_summary(unt_dir_00conf, "report.tsv")
+
+#Import k2 reports with k2 confidence of 0.9
+vsp_k2_reports_90conf <- import_kraken2_summary(vsp_dir_90conf, "report.tsv")
+rpip_k2_reports_90conf <- import_kraken2_summary(rpip_dir_90conf, "report.tsv")
+unt_k2_reports_90conf <- import_kraken2_summary(unt_dir_90conf, "report.tsv")
+
+
+vsp_k2_reports_00conf <- vsp_k2_reports_00conf %>% 
+  mutate(Enrichment = "VSP",
+         Kraken2_confidence = "0.0" )
+rpip_k2_reports_00conf <- rpip_k2_reports_00conf %>% 
+  mutate(Enrichment = "RPIP",
+         Kraken2_confidence = "0.0" )
+unt_k2_reports_00conf <- unt_k2_reports_00conf %>% 
+  mutate(Enrichment = "None",
+         Kraken2_confidence = "0.0" )
+
+
+
+vsp_k2_reports_90conf <- vsp_k2_reports_90conf %>% 
+  mutate(Enrichment = "VSP",
+         Kraken2_confidence = "0.9" )
+rpip_k2_reports_90conf <- rpip_k2_reports_90conf %>% 
+  mutate(Enrichment = "RPIP",
+         Kraken2_confidence = "0.9" )
+unt_k2_reports_90conf <- unt_k2_reports_90conf %>% 
+  mutate(Enrichment = "None",
+         Kraken2_confidence = "0.9" )
+
+
+all_k2_reports_anyConf <- bind_rows(vsp_k2_reports_00conf,
+                                    rpip_k2_reports_00conf,
+                                    unt_k2_reports_00conf,
+                                    vsp_k2_reports_90conf,
+                                    rpip_k2_reports_90conf,
+                                    unt_k2_reports_90conf)
+
+rm(vsp_k2_reports_00conf, rpip_k2_reports_00conf, unt_k2_reports_00conf,
+   vsp_k2_reports_90conf, rpip_k2_reports_90conf, unt_k2_reports_90conf)
+
+dir.create("imported_k2_reports")
+write_csv(all_k2_reports_anyConf, "imported_k2_reports/all_k2_reports_anyConf")
