@@ -1,6 +1,6 @@
 library(edgeR)
 library(tidyverse)
-library(ordinal)
+#library(ordinal)
 
 edger_family_count_table_w_rrna <- read_csv("DS2_family_count_matrix_w_rrna.csv")
 
