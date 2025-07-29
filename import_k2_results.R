@@ -2,7 +2,7 @@ library(tidyverse)
 library(zoo)
 
 #Main dir that contains all targeted panel results
-topdir <- "/projects/bios_microbe/cowen20/targeted_panels/"
+topdir <- "input/link_to_raw_data/"
 
 #Subdir with k2 reports from each panel
 vsp_dir_00conf <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
