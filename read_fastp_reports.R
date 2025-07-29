@@ -19,9 +19,11 @@ unt_fastp_no_dedup_dir <- paste0(topdir,
 #Function to load one fastp report:
 read_fastp_report <- function(fastp_json_path) {
   fastp_json <- fromJSON(fastp_json_path)
-  fastp_summary <- as.data.frame(fastp_json$summary)
-  fastp_summary$SampleID <- basename(fastp_json_path)
-  return(fastp_summary)
+  fastp_df <- as.data.frame(fastp_json[-c(4:9)])
+  fastp_df$insert_size_peak <- fastp_json[[4]][1]
+  fastp_df$unknown_ins_size_count <- fastp_json[[4]][2]
+  fastp_df$SampleID <- basename(fastp_json_path)
+  return(fastp_df)
 }
 
 
@@ -34,9 +36,6 @@ import_fastp_summaries <- function(directory) {
 }
 
 rpip_fastp_summaries_unmerged <- import_fastp_summaries(rpip_fastp_no_dedup_dir)
-
-fastpjson_ <- fromJSON("input/link_to_raw_data/rpip_panels/raw_fastqs/fastp_out_no_dedup/reports/001-36397-FA-RP_S265_L005_fastp_data.json")
-
 
 #Convert sample names (from file names) into columns of relevant information:
 rpip_fastp_summaries <- separate(rpip_fastp_summaries,
