@@ -78,42 +78,42 @@ allFamilies_anyConf_withRrna <- collapse_to_family_keep_rrna(
 
 
 ################################################################################
-all_families <- all_families %>%
-  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, as.character(Kraken2_confidence), sep = "-"))
+allFamilies_anyConf_noRrna <- allFamilies_anyConf_noRrna %>%
+  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, Kraken2_confidence, sep = "-"))
 
-all_families_w_rrna <- all_families_w_rrna %>%
-  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, as.character(Kraken2_confidence), sep = "-"))
-
-
-sample_metadata <- all_families %>%
-  ungroup() %>%
-  select(UniqueID, SampleID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type,
-         Enrichment, Kraken2_confidence) %>%
-  distinct()
+allFamilies_anyConf_withRrna <- allFamilies_anyConf_withRrna %>%
+  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, Kraken2_confidence, sep = "-"))
 
 
-sample_metadata_w_rrna <- all_families_w_rrna %>%
+sample_metadata_noRrna <- allFamilies_anyConf_noRrna %>%
   ungroup() %>%
   select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type,
          Enrichment, Kraken2_confidence) %>%
   distinct()
 
-family_count_matrix <- all_families %>%
+
+sample_metadata_withRrna <- allFamilies_anyConf_withRrna %>%
+  ungroup() %>%
+  select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type,
+         Enrichment, Kraken2_confidence) %>%
+  distinct()
+
+family_count_matrix_noRrna <- allFamilies_anyConf_noRrna %>%
   pivot_wider(id_cols = !!sym("F"),
               names_from = UniqueID,
               values_from = readcount,
               values_fill = 0)
 
 
-family_count_matrix_w_rrna <- all_families_w_rrna %>%
+family_count_matrix_withRrna <- allFamilies_anyConf_withRrna %>%
   pivot_wider(id_cols = !!sym("F"),
               names_from = UniqueID,
               values_from = readcount,
               values_fill = 0)
 
 
-write_csv(sample_metadata, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/DS2_sample_metadata.csv")
-write_csv(sample_metadata_w_rrna, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/DS2_sample_metadata_w_rrna.csv")
+write_csv(sample_metadata_noRrna, "edger_tables/edger_sample_metadata_noRrna.csv")
+write_csv(sample_metadata_withRrna, "edger_tables/edger_sample_metadata_withRrna.csv")
 
-write_csv(family_count_matrix, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/DS2_family_count_matrix_no_rrna.csv")
-write_csv(family_count_matrix_w_rrna, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/DS2_family_count_matrix_w_rrna.csv")
+write_csv(family_count_matrix_noRrna, "edger_tables/edger_family_count_matrix_noRrna.csv")
+write_csv(family_count_matrix_withRrna, "edger_tables/edger_family_count_matrix_withRrna.csv")
