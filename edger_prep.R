@@ -5,26 +5,8 @@ library(edgeR)
 #Main dir that contains all targeted panel results
 saved_reports_path <- "imported_k2_reports/all_k2_reports_anyConf.csv"
 
-#Locations of preformatted tax tables relative to topdir
-#vsp_loc <- "vsp_panels/vsp_all_taxa_all_samples_rrna_separated.tsv"
-#rpip_loc <- "rpip_panels/rpip_all_taxa_all_samples_rrna_separated.tsv"
-#untargeted_loc <- "untargeted/untargeted_all_taxa_all_samples_rrna_separated.tsv"
-#vsp_90_loc <- "vsp_panels/vsp_all_taxa_all_samples_rrna_separated_90conf.tsv"
-#rpip_90_loc <- "rpip_panels/rpip_all_taxa_all_samples_rrna_separated_90conf.tsv"
-#untargeted_90_loc <- "untargeted/untargeted_all_taxa_all_samples_rrna_separated_90conf.tsv"
-
-
-load_imported <- function(tsv_location,
-                   topdir = "/projects/bios_microbe/cowen20/targeted_panels/") {
-  imported_df <- read_tsv(paste0(topdir, tsv_location), guess_max = Inf)
-  imported_df <- imported_df %>%
-    mutate(taxID = as.character(taxID),
-           LIMS_ID = as_factor(LIMS_ID),
-           ribosomal = as_factor(ribosomal),
-           site = as_factor(site))
-  return(imported_df)
-}
-
+#Function to apply after importing (there are too many columns to specify types
+#during import)
 assert_k2_report_coltypes <- function(k2_report_df) {
   fixed <- k2_report_df %>%
     mutate(taxID = as_factor(as.character(taxID)),
@@ -35,22 +17,9 @@ assert_k2_report_coltypes <- function(k2_report_df) {
            ribosomal = as_factor(ribosomal),
            site = as_factor(site),
            Enrichment = as_factor(Enrichment),
+           #sprintf is used to preserve correct digit length in type conversion
            Kraken2_confidence = as_factor(sprintf("%.1f", Kraken2_confidence)))
   return(fixed)
-}
-
-
-
-all_k2_reports_anyConf <- read_csv(saved_reports_path, guess_max = Inf)
-all_k2_reports_anyConf <- assert_k2_report_coltypes(all_k2_reports_anyConf)
-
-collapse_to_tax_level <- function(imported_table, level) {
-    collapsed <- imported_table %>%
-    group_by(!!sym(level), SampleID, LIMS_ID, Treatment, ribosomal, 
-             Kraken2_confidence) %>%
-      summarise(readcount = sum(nodeOnly),
-                RA = sum(RA))
-    return(collapsed)
 }
 
 parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
@@ -69,65 +38,46 @@ parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
     ))
 }
 
-collapse_to_family_no_rrna <- function(imported_report, treatment_name, conf_level) {
-  families <- collapse_to_tax_level(imported_report, "F")
-  families <- parse_sample_treatments(families) 
-  families <- families %>%
-    mutate(Enrichment = treatment_name) %>%
-    mutate(Kraken2_confidence = conf_level)
+#######################
+#####Load the data#####
+#######################
+all_k2_reports_anyConf <- read_csv(saved_reports_path, guess_max = Inf)
+all_k2_reports_anyConf <- assert_k2_report_coltypes(all_k2_reports_anyConf)
+all_k2_reports_anyConf <- parse_sample_treatments(all_k2_reports_anyConf)
+#######################
+
+#To summarize the imported reports at any particular tax level
+collapse_to_tax_level <- function(imported_k2_reports, level) {
+  collapsed <- imported_k2_reports
+  setDT(collapsed)
+  collapsed[, .(readcount = sum(nodeOnly), RA = sum(RA)),
+            by = c(level, "LIMS_ID", "site", "Treatment", 
+                   "Enrichment", "ribosomal", "Kraken2_confidence", "Fraction",
+                   "Nanotrap_type")]
+}
+
+collapse_to_family_no_rrna <- function(imported_k2_report) {
+  families <- collapse_to_tax_level(imported_k2_report, "F")
   families <- filter(families, ribosomal == "nonrrna")
 }
 
+allFamilies_anyConf_noRrna <- collapse_to_family_no_rrna(all_k2_reports_anyConf)
 
-collapse_to_family_keep_rrna <- function(imported_report, treatment_name, conf_level) {
-  families <- collapse_to_tax_level(imported_report, "F")
-  families <- parse_sample_treatments(families) 
+collapse_to_family_keep_rrna <- function(imported_k2_report) {
+  families <- collapse_to_tax_level(imported_k2_report, "F")
   families <- families %>%
-    mutate(Enrichment = treatment_name) %>%
-    mutate(Kraken2_confidence = conf_level)
+    group_by(across(-c(readcount, RA, ribosomal))) %>%
+    summarise(readcount = sum(readcount), .groups = "drop") %>%
+    group_by(across(-c(`F`, readcount))) %>%
+    mutate(RA = readcount / sum(readcount))
 }
 
-vsp_families_no_rrna <- collapse_to_family_no_rrna(vsp_imported, "VSP", 0)
-vsp_families_w_rrna <- collapse_to_family_keep_rrna(vsp_imported, "VSP", 0)
-
-vsp_families_90_no_rrna <- collapse_to_family_no_rrna(vsp_imported_90, "VSP", 0.9)
-vsp_families_90_w_rrna <- collapse_to_family_keep_rrna(vsp_imported_90, "VSP", 0.9)
-
-rpip_families_no_rrna <- collapse_to_family_no_rrna(rpip_imported, "RPIP", 0)
-rpip_families_w_rrna <- collapse_to_family_keep_rrna(rpip_imported, "RPIP", 0)
-
-rpip_families_90_no_rrna <- collapse_to_family_no_rrna(rpip_imported_90, "RPIP", 0.9)
-rpip_families_90_w_rrna <- collapse_to_family_keep_rrna(rpip_imported_90, "RPIP", 0.9)
+allFamilies_anyConf_withRrna <- collapse_to_family_keep_rrna(
+  all_k2_reports_anyConf
+  )
 
 
-untargeted_families_no_rrna <- collapse_to_family_no_rrna(untargeted_imported, "None", 0)
-untargeted_families_w_rrna <- collapse_to_family_keep_rrna(untargeted_imported, "None", 0)
-
-untargeted_families_90_no_rrna <- collapse_to_family_no_rrna(untargeted_imported_90, "None", 0.9)
-untargeted_families_90_w_rrna <- collapse_to_family_keep_rrna(untargeted_imported_90, "None", 0.9)
-
-all_families <- bind_rows(vsp_families_no_rrna,
-                          rpip_families_no_rrna,
-                          untargeted_families_no_rrna,
-                          vsp_families_90_no_rrna,
-                          rpip_families_90_no_rrna,
-                          untargeted_families_90_no_rrna)
-
-all_families_w_rrna <- bind_rows(vsp_families_w_rrna,
-                          rpip_families_w_rrna,
-                          untargeted_families_w_rrna,
-                          vsp_families_90_w_rrna,
-                          rpip_families_90_w_rrna,
-                          untargeted_families_90_w_rrna)
-
-all_families$Kraken2_confidence <- as.character(all_families$Kraken2_confidence)
-all_families_w_rrna$Kraken2_confidence <- as.character(all_families_w_rrna$Kraken2_confidence)
-
-all_families_w_rrna <- all_families_w_rrna %>%
-  group_by(`F`, LIMS_ID, Treatment, site, Fraction, Nanotrap_type, Enrichment, Kraken2_confidence) %>%
-  summarize(readcount = sum(readcount))
-  
-
+################################################################################
 all_families <- all_families %>%
   mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, as.character(Kraken2_confidence), sep = "-"))
 
