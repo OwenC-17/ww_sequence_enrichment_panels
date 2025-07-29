@@ -103,3 +103,31 @@ generate_levels <- function(group_df) {
 
 #Now run the design generator to get a model matrix:
 design_90conf_noRrna <- generate_levels2(group_data_90conf_noRrna)
+
+
+###Fit the model
+#Create a DGEList object (what EdgeR works with) from the count matrix:
+edger_family_dge_90conf_noRrna <- DGEList(
+  counts = edger_family_count_table_90conf_noRrna
+  )
+
+#Find low-frequency taxa that don't give us enough information to be useful but mess 
+#with the analysis:
+edger_family_dge_90conf_noRrna_lfRemover <- filterByExpr(
+  edger_family_dge_90conf_noRrna, 
+  design = design_90conf_noRrna)
+
+edger_family_dge_lfRemoved_90conf_noRrna <- family_90conf_no_rrna[
+  edger_family_dge_90conf_noRrna_lfRemover, , keep.lib.sizes = FALSE
+  ]
+
+#Fit the model:
+edger_family_disp_lfRemoved_90conf_noRrna <- estimateDisp(
+  y = edger_family_dge_lfRemoved_90conf_noRrna,
+  design = design_90conf_noRrna
+)
+
+edger_family_fit_lfRemoved_90conf_noRrna <- glmQLFit(
+  edger_family_disp_lfRemoved_90conf_noRrna, 
+  design_90conf_noRrna
+)
