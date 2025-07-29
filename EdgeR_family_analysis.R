@@ -131,3 +131,20 @@ edger_family_fit_lfRemoved_90conf_noRrna <- glmQLFit(
   edger_family_disp_lfRemoved_90conf_noRrna, 
   design_90conf_noRrna
 )
+
+
+#Create Boolean vectors indicating which columns of the design matrix correspond
+#to individual treatments:
+index_main_effects <- function(design) {
+  is.RPIP <<- str_detect(colnames(design), "RPIP")
+  is.VSP <<- str_detect(colnames(design), "VSP")
+  is.Untargeted <<- str_detect(colnames(design), "None")
+  is.Filtrate <<- str_detect(colnames(design), "filtrate")
+  is.Retentate <<- str_detect(colnames(design), "retentate")
+  is.Unfiltered <<- str_detect(colnames(design), "unfiltered")
+  is.NanoA <<- str_detect(colnames(design), "A\\.")
+  is.NanoB <<- str_detect(colnames(design), "A&B")
+  is.DirectExt <<- str_detect(colnames(design), "none")
+}
+
+index_main_effects(design_90conf_noRrna)
