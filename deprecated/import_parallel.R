@@ -48,6 +48,8 @@ parse_locations <- function(taxtable) {
 cl <- makeCluster(28)
 registerDoParallel(cl = cl)
 
+
+
 #Import all the VSP kraken 2 reports in parallel
 #(generate_tax_table() and fill_tax_NAs() are from functions_for_tax_analysis.R)
 imported_vsp_reports <- foreach(data = vsp_file_list, 
