@@ -1,24 +1,42 @@
 library(jsonlite)
 library(tidyverse)
 
-read_fastp_report <- function(fastp_json) {
-  fastp_json <- fromJSON(fastp_json)
+###Define filepaths
+topdir <- "input/link_to_raw_data/"
+vsp_fastp_no_dedup_dir <- paste0(topdir,
+                                 "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
+                                 "reports/")
+
+rpip_fastp_no_dedup_dir <- paste0(topdir,
+                                  "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
+                                  "reports/")
+
+unt_fastp_no_dedup_dir <- paste0(topdir, 
+                                 "untargeted/raw_fastqs/fastp_out_no_dedup/",
+                                 "reports/")
+
+
+#Function to load one fastp report:
+read_fastp_report <- function(fastp_json_path) {
+  fastp_json <- fromJSON(fastp_json_path)
   fastp_summary <- as.data.frame(fastp_json$summary)
+  fastp_summary$SampleID <- basename(fastp_json_path)
   return(fastp_summary)
 }
 
-#Import RPIP fastp results:
-setwd("/projects/bios_microbe/cowen20/targeted_panels/rpip_panels/raw_fastqs/fastp_merged_no_dedup/deeparg_out/")
-rm(rpip_fastp_summaries)
-for (fastp_report in list.files("../reports/", pattern = "*.json")) {
-  fp_summary <- read_fastp_report(paste0("../reports/", fastp_report))
-  fp_summary$sampleName <- fastp_report
-  if (!exists("rpip_fastp_summaries")) {
-    rpip_fastp_summaries <- fp_summary
-  } else {
-    rpip_fastp_summaries <- rbind(rpip_fastp_summaries, fp_summary)
-  }
+
+#Function to load ALL fastp reports:
+import_fastp_summaries <- function(directory) {
+  file_list <- list.files(directory, pattern = "*\\.json$", full.names = TRUE)
+  fastp_reports <- lapply(file_list, read_fastp_report)
+  fastp_reports <- bind_rows(fastp_reports)
+  return(fastp_reports)
 }
+
+rpip_fastp_summaries_unmerged <- import_fastp_summaries(rpip_fastp_no_dedup_dir)
+
+fastpjson_ <- fromJSON("input/link_to_raw_data/rpip_panels/raw_fastqs/fastp_out_no_dedup/reports/001-36397-FA-RP_S265_L005_fastp_data.json")
+
 
 #Convert sample names (from file names) into columns of relevant information:
 rpip_fastp_summaries <- separate(rpip_fastp_summaries,
