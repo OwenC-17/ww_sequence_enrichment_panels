@@ -55,3 +55,51 @@ edger_family_count_table_90conf_noRrna <- prepare_count_table_for_edgeR(
   edger_family_count_table_noRrna, group_data_90conf_noRrna
   )
 
+
+###Generate a design matrix for EdgeR:
+generate_levels <- function(group_df) {
+  #Use LIMS_ID to control for which sample we started with:
+  LIMS_ID <- factor(group_df$LIMS_ID)
+  
+  #Define explanatory variables as factors and order them to have an appropriate
+  #baseline:  
+  Fraction <- factor(group_df$Fraction, levels = c("unfiltered", 
+                                                   "retentate", 
+                                                   "filtrate"))
+  
+  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", "A", "A&B"))
+  
+  Enrichment <- factor(group_df$Enrichment, levels = c("None", "RPIP", "VSP"))
+  
+  #Create a tibble containing all combinations of treatment variables:
+  treat_tb <- expand.grid(Fraction = levels(Fraction),
+                          Nanotrap_type = levels(Nanotrap_type),
+                          Enrichment = levels(Enrichment),
+                          stringsAsFactors = FALSE)
+                          
+  #Create an empty list, then add every possible combination of treatment variables:
+  treat_list <- vector("list", length = nrow(treat_tb) - 1)
+  
+  for(row in 2:nrow(treat_tb)) {
+    treat_vec <- (Fraction == treat_tb[row, 1] & 
+                  Nanotrap_type == treat_tb[row, 2] &
+                  Enrichment == treat_tb[row, 3])
+    treat_list[[row - 1]] <- treat_vec
+    names(treat_list) <- paste(treat_tb[, 1], treat_tb[, 2], treat_tb[, 3], sep = ".")[-1]
+  }
+  
+  treat_mat <- lapply(treat_list, as.numeric) %>% as.tibble() %>% as.matrix()
+  
+  #Start model with only LIMS_ID as explanatory variable:
+  design <- model.matrix(~LIMS_ID)
+  
+  #Append all of the boolean treatment combinations to the model matrix:
+  design <- cbind(design, treat_mat)
+
+  #And there we have it, the model matrix! 
+  return(design)
+}
+
+
+#Now run the design generator to get a model matrix:
+design_90conf_noRrna <- generate_levels2(group_data_90conf_noRrna)
