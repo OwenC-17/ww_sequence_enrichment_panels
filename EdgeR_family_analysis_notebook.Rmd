@@ -1,0 +1,205 @@
+---
+title: "Comparison of Family abundances using EdgeR"
+output: html_notebook
+---
+
+\
+\
+Load libraries:
+
+```{r}
+library(tidyverse)
+library(edgeR)
+```
+
+\
+\
+Import data:
+
+```{r}
+#Family count tables:
+edger_family_count_table_w_rrna <- read_csv("DS2_family_count_matrix_w_rrna.csv", 
+                                            show_col_types = FALSE)
+edger_family_count_table_no_rrna <- read_csv("DS2_family_count_matrix_no_rrna.csv",
+                                             show_col_types = FALSE)
+
+#Metadata (or group data in EdgeR lingo):
+group_data <- read_csv("DS2_sample_metadata_w_rrna.csv", show_col_types = FALSE) %>%
+  arrange(by = UniqueID)
+
+group_data_no_rrna <- read_csv("DS2_sample_metadata.csv", show_col_types = FALSE) %>%
+  arrange(by = UniqueID)
+```
+
+\
+\
+Some formatting of the data:
+
+```{r}
+filter_group_by_k2conf <- function(group, k2conf) {
+  group <- filter(group, Kraken2_confidence == k2conf)
+  return(group)
+}
+
+prepare_count_table_for_edgeR <- function(count_table, group) {
+  #Rename the `F` column to "Family" to avoid confusion with Boolean F:
+  fcounts <- count_table %>%
+    dplyr::rename(Family = `F`)
+  
+  #Designate everything that has no family-level classification as "unclassified":
+  fcounts[str_starts(fcounts$Family, "unid"), "Family"] <- "unclassified"
+  
+  #Sum the "unclassified" counts within each sample:
+  fcounts <- fcounts %>%
+    group_by(Family) %>%
+    summarize(across(everything(), sum), .groups = "drop")
+  
+  #Filter to confidence level to match group data (in case group data has already been
+  #filtered, e.g. by kraken2 confidence level). This will also order the columns in 
+  #fcounts to match the group data sample order:
+  fcounts <- fcounts[,c("Family", group$UniqueID)]
+  
+  #Sanity check (make sure sample names and order match in counts and group data):
+  mismatches <- sum(colnames(fcounts[,2:ncol(fcounts)]) != group$UniqueID)
+  if (mismatches != 0) {
+    stop("Something is wrong; the samples in the count table don't match the samples in the group data.")
+  }
+  return(fcounts)
+}
+
+#Get the group data with K2 confidence of 0.9:
+group_data_90conf_no_rrna <- filter_group_by_k2conf(group_data_no_rrna, 0.9)
+
+#Get the corresponding family count data:
+edger_family_count_table_no_rrna_90conf <- prepare_count_table_for_edgeR(edger_family_count_table_no_rrna, group_data_90conf_no_rrna)
+```
+
+\
+\
+Now we need to build the EdgeR model. The experimental design is complex (with repeated measures and nesting), so we'll loop through the explanatory variables to build the model matrix:
+
+```{r}
+generate_levels <- function(group_df) {
+  #Use LIMS_ID to control for which sample we started with:
+  LIMS_ID <- factor(group_df$LIMS_ID)
+  
+  #Define explanatory variables as factors and order to have an appropriate baseline:  
+  Fraction <- factor(group_df$Fraction, levels = c("unfiltered", 
+                                                   "retentate", 
+                                                   "filtrate"))
+  
+  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", "A", "A&B"))
+  
+  Enrichment <- factor(group_df$Enrichment, levels = c("None", "RPIP", "VSP"))
+  
+  #Create an empty list, then add every possible combination of treatment variables:
+  treat_list <- list()
+  
+  for (x in levels(Fraction)) {
+    for (y in levels(Nanotrap_type)) {
+      for (z in levels(Enrichment)) {
+        
+        #Connect the combination of treatments into a single string:
+        tx_name <- paste(x, y, z, sep = ".")
+        
+        #Create a boolean vector for each combination of treatments. For each row of 
+        #group_df, this vector will be TRUE if the sample in that row received the 
+        #combination of treatments specified by tx_name. This part might be confusing.
+        #assign(tx_name) doesn't assign a value to tx_name, but rather to a new variable
+        #which is named after the string contained in tx_name. So if print(tx_name) 
+        #gives "filtrate.A.VSP", the variable filtrate.A.VSP will now contain the   
+        #boolean vector that is TRUE for all filtrate samples concentrated with Nanotrap
+        #A and enriched with the VSP panel, and FALSE for all other samples. 
+        assign(tx_name, (Fraction == x & Nanotrap_type == y & Enrichment == z))
+        
+        #Add the column to the list of combinations:
+        treat_list <- c(treat_list, setNames(list(get(tx_name)), tx_name))
+      }
+    }
+  }
+  
+  #Start model with only LIMS_ID as explanatory variable:
+  design <- model.matrix(~LIMS_ID)
+  
+  #Append all of the boolean treatment combination vectors to the model matrix:
+  for (group in 1:length(treat_list)) {
+    design <- cbind(design, unlist(treat_list[group]))
+  }
+  
+  #Name the columns (NTS: why does this need to be an extra step?):
+  colnames(design)[(length(levels(LIMS_ID)) + 1):ncol(design)] <- names(treat_list)
+  
+  #Remove what is essentially a "no treatment" column; EdgeR will treat this as a 
+  #baseline, and it is redundant, so it shouldn't be included.
+  design <- design[, colnames(design) != "unfiltered.none.None"]
+  
+  #And there we have it, the model matrix! 
+  return(design)
+}
+
+
+#Now run the design generator to get a model matrix:
+design <- generate_levels(group_data_90conf_no_rrna)
+```
+
+\
+\
+Here's a sample of what the model matrix looks like:
+
+```{r}
+head(design, n = 20)
+```
+
+\
+Now we start the EdgeR analysis.
+
+```{r}
+
+#Create a DGEList object (what EdgeR works with) from the count matrix:
+edger_family_dge_no_rrna_90conf <- DGEList(counts = edger_family_count_table_no_rrna_90conf)
+
+#Find low-frequency taxa that don't give us enough information to be useful but mess 
+#with the analysis:
+lf_removed <- filterByExpr(edger_family_dge_no_rrna_90conf, design = design)
+
+edger_family_dge_no_rrna_90conf_lf_removed <- family_90conf_no_rrna[lf_removed, , keep.lib.sizes = FALSE]
+
+#Fit the model:
+disp_families_no_rrna_90conf_lf_removed <- estimateDisp(
+  y = edger_family_dge_no_rrna_90conf_lf_removed,
+  design = design
+  )
+fit_families_no_rrna_90conf_lf_removed <- glmQLFit(
+  disp_families_no_rrna_90conf_lf_removed, 
+  design
+  )
+```
+
+Create Boolean vectors for treatment *columns*. This will make it much easier to set up contrasts:
+
+```{r}
+is.RPIP <- str_detect(colnames(design), "RPIP")
+is.VSP <- str_detect(colnames(design), "VSP")
+is.Untargeted <- str_detect(colnames(design), "None")
+is.Filtrate <- str_detect(colnames(design), "filtrate")
+is.Retentate <- str_detect(colnames(design), "retentate")
+is.Unfiltered <- str_detect(colnames(design), "unfiltered")
+is.NanoA <- str_detect(colnames(design), "A\\.")
+is.NanoB <- str_detect(colnames(design), "A&B")
+is.DirectExt <- str_detect(colnames(design), "none")
+```
+
+## Now we can perform all contrasts.
+
+Effect of VSP with Nanotrap A in Filtrate:
+
+```{r}
+#Effect of VSP with Nanotrap A in Filtrate:
+VSP_filtrate_NTA_no_rrna_90conf_lf_removed <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.VSP & is.Filtrate & is.NanoA) - (is.Untargeted & is.Filtrate & is.NanoA))
+topTags(VSP_filtrate_NTA_no_rrna_90conf_lf_removed, n = 25, sort.by = "logFC")
+
+```
+
+Effect of VSP with Nanotrap A + B in filtrate:
+
+Effect of VSP with no Nanotrap in filtrate:
