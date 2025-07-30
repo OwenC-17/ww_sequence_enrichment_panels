@@ -41,6 +41,7 @@ import_fastp_summaries <- function(directory) {
                             remove = FALSE)
   #parse_sample_treatments is defined in import_k2_results.R
   fastp_reports <- parse_sample_treatments(fastp_reports)
+  fastp_reports <- parse_locations(fastp_reports)
   fastp_reports <- mutate(fastp_reports,
                     num_reads_removed = summary.before_filtering.total_reads - 
                       summary.after_filtering.total_reads,
@@ -104,8 +105,10 @@ import_merged_fastp_summaries <- function(directory) {
                             sep = "(-|_)",
                             remove = FALSE,
                             extra = "drop")
-  #parse_sample_treatments is defined in import_k2_results.R
+  #parse_sample_treatments and parse_locationse are defined in 
+  #import_k2_results.R
   fastp_reports <- parse_sample_treatments(fastp_reports)
+  fastp_reports <- parse_locations(fastp_reports)
   fastp_reports <- mutate(fastp_reports,
                           num_reads_removed = summary.before_filtering.total_reads - 
                             (2 * summary.after_filtering.total_reads),
