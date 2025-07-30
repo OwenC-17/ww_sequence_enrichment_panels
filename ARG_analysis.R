@@ -36,135 +36,27 @@ import_ARG_mapfiles <- function(directory) {
                             sep = "(-|_)",
                             remove = FALSE,
                             extra = "drop")
-  #parse_sample_treatments is defined in import_k2_results.R
+  #parse_sample_treatments and parse_locations are defined in 
+  #import_k2_results.R
   combined_ARG_df <- parse_sample_treatments(combined_ARG_df)
+  combined_ARG_df <- parse_locations(combined_ARG_df)
   return(combined_ARG_df)
 }
 
+#Import the Deeparg read mapping files:
 rpip_deeparg_results_table <- import_ARG_mapfiles(rpip_deeparg_dir)
+unt_deeparg_results_table <- import_ARG_mapfiles(unt_deeparg_dir)
 
 #Add enrichment column
 rpip_deeparg_results_table$Enrichment <- "RPIP"
-
-#Convert "sampleName" into separate columns
-rpip_deeparg_results_table <- separate(rpip_deeparg_results_table,
-                                 col = sampleName,
-                                 into = c("QCSeqID", "LIMS_ID", "Treatment",
-                                          NA, NA, NA, NA, NA, NA, NA, NA),
-                                 sep = "(-|_)")
-
-#Function to convert 2-letter codes into readable treatment info
-parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
-  parsed <- tax_table %>%
-    mutate(Fraction = str_replace_all(
-      !!sym(treatment_col),
-      c("^F.$" = "filtrate",
-        "^R.$" = "retentate",
-        "^U.$" = "unfiltered")
-    )) %>%
-    mutate(Nanotrap_type = str_replace_all(
-      !!sym(treatment_col),
-      c("^.A$" = "A",
-        "^.B$" = "A&B",
-        "^.D$" = "none")
-    ))
-}
-
-#Convert the 2-letter codes
-rpip_deeparg_results_table <- parse_sample_treatments(rpip_deeparg_results_table)
-
-#Indicate which sample site each sample came from
-parse_locations <- function(taxtable) {
-  mutate(taxtable, site = str_replace_all(
-    LIMS_ID,
-    c(
-      "(36397|38156|41596|34970)" = "OBrien", #regex for any one of the given strings
-      "(32976|32989|20040|22015)" = "OHare"
-    )
-  )
-  )
-}
-
-#Add location info to the df
-rpip_deeparg_results_table <- parse_locations(rpip_deeparg_results_table)
-
-
-#For untargeted sequencing:
-setwd("/projects/bios_microbe/cowen20/targeted_panels/untargeted/raw_fastqs/fastp_merged_no_dedup/deeparg_out/")
-
-#Start from clear slate:
-rm(untargeted_deeparg_results_table)
-
-#Import the unargeted deeparg reports:
-for (ARG in list.files(pattern = "*mapping.ARG")) {
-  print(ARG)
-  arg_report <- read_tsv(ARG) #(The file name)
-  arg_report$sampleName <- ARG #(The file name is the sample name)
-  if (!exists("untargeted_deeparg_results_table")) {
-    untargeted_deeparg_results_table <- arg_report
-  } else {
-    untargeted_deeparg_results_table <- rbind(untargeted_deeparg_results_table, arg_report)
-  }
-}
-
-#Label untargeted as no enrichment
-untargeted_deeparg_results_table$Enrichment <- "None"
-
-#Remove weird character:
-colnames(untargeted_deeparg_results_table)[colnames(untargeted_deeparg_results_table) == "#ARG"] <- "ARG"
-
-#Convert sampleName column into separate columns for relevant info:
-untargeted_deeparg_results_table <- separate(untargeted_deeparg_results_table,
-                                       col = sampleName,
-                                       into = c("QCSeqID", "LIMS_ID", "Treatment",
-                                                NA, NA, NA, NA, NA, NA, NA, NA),
-                                       sep = "(-|_)")
-
-#Function to convert 2-letter codes into readable treatments (don't need to 
-#re-define if already defined during RPIP import)
-parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
-  parsed <- tax_table %>%
-    mutate(Fraction = str_replace_all(
-      !!sym(treatment_col),
-      c("^F.$" = "filtrate",
-        "^R.$" = "retentate",
-        "^U.$" = "unfiltered")
-    )) %>%
-    mutate(Nanotrap_type = str_replace_all(
-      !!sym(treatment_col),
-      c("^.A$" = "A",
-        "^.B$" = "A&B",
-        "^.D$" = "none")
-    ))
-}
-
-#Convert the 2-letter codes:
-untargeted_deeparg_results_table <- parse_sample_treatments(untargeted_deeparg_results_table)
-
-#Funtion to label sample sites based on IDs (don't need to re-define if already
-#run. Just leaving here in case I need to run through importing untargeted dataset again)
-parse_locations <- function(taxtable) {
-  mutate(taxtable, site = str_replace_all(
-    LIMS_ID,
-    c(
-      "(36397|38156|41596|34970)" = "OBrien", #regex for any one of the given strings
-      "(32976|32989|20040|22015)" = "OHare"
-    )
-  )
-  )
-}
-
-untargeted_deeparg_results_table <- parse_locations(untargeted_deeparg_results_table)
+unt_deeparg_results_table$Enrichment <- "None"
 
 #combine them
-rpip_vs_none_deeparg_results_table <- rbind(rpip_deeparg_results_table, 
-                                            untargeted_deeparg_results_table)
-
-#Rename that one weird column 
-colnames(rpip_vs_none_deeparg_results_table)[colnames(rpip_vs_none_deeparg_results_table) == "predicted_ARG-class"] <- "predicted_ARG_class"
+rpip_vs_unt_deeparg_results_table <- rbind(rpip_deeparg_results_table, 
+                                           unt_deeparg_results_table)
 
 #Create an ID that contains all treatment information and is unique:
-rpip_vs_none_deeparg_results_table <- rpip_vs_none_deeparg_results_table %>%
+rpip_vs_unt_deeparg_results_table <- rpip_vs_unt_deeparg_results_table %>%
   mutate(UniqueID = paste0(LIMS_ID, Treatment, Enrichment))
 
 #####IMPORTANT: Run read_fastp_reports.R before continuing#####
