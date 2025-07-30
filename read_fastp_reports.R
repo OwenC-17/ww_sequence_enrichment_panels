@@ -131,10 +131,6 @@ unt_fastp_merged_no_dedup_dir <- paste0(topdir,
                                          "untargeted/raw_fastqs/",
                                          "fastp_merged_no_dedup/reports/")
 
-test_ <- "input/link_to_raw_data/rpip_panels/raw_fastqs/fastp_merged_no_dedup/reports/001-36397-FA-RP_S265_L005_merged_no_dedup_fastp_data.json"
-
-merged_ <- fromJSON(test_)
-
 rpip_fastp_summaries_merged <- import_merged_fastp_summaries(
   rpip_fastp_merged_no_dedup_dir
   ) %>%
@@ -153,3 +149,4 @@ ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = portion_reads_remove
 ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = portion_bases_removed)) + geom_boxplot()
 ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = summary.after_filtering.total_reads)) + geom_boxplot()
 ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = summary.before_filtering.total_reads)) + geom_boxplot()
+ggplot(both_fastp_summaries_merged, aes(x = site, y = summary.after_filtering.total_reads)) + geom_boxplot()
