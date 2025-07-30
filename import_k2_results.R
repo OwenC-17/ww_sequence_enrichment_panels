@@ -67,8 +67,10 @@ parse_sample_ids <- function(taxtable) {
            col = SampleID,
            into = c("QCSeqID", "LIMS_ID", "Treatment",
                     NA, NA, NA, NA, NA, 
-                    "ribosomal", NA ), 
-           sep="(-|_)")
+                    "ribosomal"), 
+           sep="(-|_)", 
+           extra = "drop"
+           )
 }
 
 parse_locations <- function(taxtable) {
