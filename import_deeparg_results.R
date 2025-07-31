@@ -53,13 +53,13 @@ rpip_vs_unt_deeparg_results_table <- rbind(rpip_deeparg_results_table,
 
 #Create an ID that contains all treatment information and is unique:
 rpip_vs_unt_deeparg_results_table <- rpip_vs_unt_deeparg_results_table %>%
-  mutate(UniqueID = paste0(LIMS_ID, Treatment, Enrichment))
+  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, sep = "-"))
 
 #####IMPORTANT: Run read_fastp_reports.R before continuing#####
 
 #Make matching column to join with deeparg results:
 both_fastp_summaries_merged <- both_fastp_summaries_merged %>%
-  mutate(UniqueID = paste0(LIMS_ID, Treatment, Enrichment))
+  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, sep = "-"))
 
 #Sum the number of reads for each ARG in each sample (some of them are repeated
 #due to differences in match stats from Diamond alignment)
@@ -76,16 +76,17 @@ total_args_per_sample <- samplewise_deeparg_results_table %>%
 
 #Join total ARG counts to fastp reports, so now we have total nreads and total
 #ARG-classified reads:
-both_fastp_summaries_merged <- both_fastp_summaries_merged %>%
+both_fastp_summaries_merged_with_argcounts <- both_fastp_summaries_merged %>%
   left_join(total_args_per_sample, by = "UniqueID")
 
 #Calculate total number of non ARG-classified reads
-both_fastp_summaries_merged <- both_fastp_summaries_merged %>%
+both_fastp_summaries_merged_with_argcounts <- 
+  both_fastp_summaries_merged_with_argcounts %>%
   mutate(NonArgReads = summary.after_filtering.total_reads - AllArgs)
 
 #Create a df that has the same sample info as the main one, but for NON-ARGs
 #in each sample:
-total_non_args_per_sample <- both_fastp_summaries_merged %>%
+total_non_args_per_sample <- both_fastp_summaries_merged_with_argcounts %>%
   select(NumReads = NonArgReads, LIMS_ID, Treatment, Enrichment, Fraction,
          Nanotrap_type, site, UniqueID)
 total_non_args_per_sample$ARG = "NonArgReads"
