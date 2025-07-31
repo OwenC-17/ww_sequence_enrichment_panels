@@ -1,56 +1,26 @@
-################################################################################
-#Look at fraction of all ARGs 
-arg_fraction_df <- full_join(all_args_per_sample, non_args_per_sample, by = "UniqueID") %>%
-  dplyr::rename(NonArg_Reads = NumReads, Arg_Reads = AllArgs)
-arg_fraction_df <- arg_fraction_df %>%
-  mutate(portion_of_args = Arg_Reads / (Arg_Reads + NonArg_Reads))
+###Run import_deeparg_results.R before this script
+library(tidyverse)
 
-arg_fraction_df_wide <- arg_fraction_df %>%
-  pivot_wider(names_from = Enrichment, values_from = c(UniqueID, portion_of_args, Arg_Reads, NonArg_Reads))
+#Read in the imported/formatted table
+rpip_v_unt_deeparg_results <- read_csv(
+  "imported_deeparg_reports/imported_deeparg_results.csv"
+  )
 
-arg_fraction_df_wide <- arg_fraction_df_wide %>%
-  mutate(RPIP_Unta_RA_ratio = portion_of_args_RPIP/portion_of_args_None)
-
-ggplot(arg_fraction_df_wide, aes(x = paste(Fraction, Nanotrap_type, sep = "_"), y = RPIP_Unta_RA_ratio)) + geom_boxplot()
-ggplot(arg_fraction_df_wide, aes(x = paste(Fraction, Nanotrap_type, sep = "_"), y = portion_of_args_RPIP)) + geom_boxplot()
-
-arg_fraction_df <- arg_fraction_df %>%
-  mutate(LabelCol = paste(str_to_sentence(Fraction), "+", Nanotrap_type)) %>%
-  mutate(Label_Enrich = str_replace(Enrichment, "None", "No enrichment"))
-
-ggplot(arg_fraction_df, aes(x = Fraction, y = portion_of_args, fill = Nanotrap_type, colour = Nanotrap_type)) + geom_boxplot() +
-  scale_fill_manual(name = "Nanotrap protocol", 
-                     values = c("aquamarine2", "goldenrod2", "lightpink2")) +
-  scale_colour_manual(name = "Nanotrap protocol",
-                     values = c("aquamarine4", "goldenrod4", "lightpink4")) +
-  ylab("Relative abundance of all ARGs") +
-  theme_minimal() +
-  facet_wrap(~Label_Enrich, strip.position = "top") +
-  theme(strip.placement = "outside", strip.text.y = element_text(size = 10), 
-        strip.background = element_rect(fill = "gray90"),
-        strip.text = element_text(face = "bold"),
-        axis.text.x = element_text(size = 10, angle = 30, hjust = 1),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        legend.position = "bottom")
-  
 ####Prepare for DESeq2
-deeparg_sample_metadata <- all_args_and_nonargs_per_sample %>%
-  ungroup() %>%
-  select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type, Enrichment) %>%
+deeparg_metadata <- rpip_v_unt_deeparg_results %>%
+  select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type, 
+         Enrichment) %>%
   distinct()
 
-deeparg_count_matrix <- all_args_and_nonargs_per_sample %>%
-  ungroup() %>%
+deeparg_count_matrix <- rpip_v_unt_deeparg_results %>%
   mutate(ARG_w_class = paste(ARG, predicted_ARG_class, sep = ":")) %>%
   pivot_wider(id_cols = ARG_w_class,
               names_from = UniqueID,
               values_from = NumReads,
               values_fill = 0)
 
-write_csv(deeparg_sample_metadata, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/deeparg_DS2_sample_metadata.csv")
-write_csv(deeparg_count_matrix, "/projects/bios_microbe/cowen20/rprojects/targeted_panels/deeparg_count_matrix_DS2.csv")
-
+write_csv(deeparg_metadata, "imported_deeparg_reports/deeparg_metadata.csv")
+write_csv(deeparg_count_matrix, "imported_deeparg_reports/deeparg_count_matrix.csv")
 
 ###DESeq2 analysis
 library(tidyverse)
