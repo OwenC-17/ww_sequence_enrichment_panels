@@ -97,7 +97,7 @@ arg_generate_levels <- function(group_df) {
 design_arg <- arg_generate_levels(edger_arg_metadata)
 
 
-###Fit the model
+###Make the EdgeR the model
 #Create a DGEList object (what EdgeR works with) from the count matrix:
 edger_arg_dge <- DGEList(
   counts = edger_arg_count_table
@@ -128,15 +128,20 @@ edger_arg_fit_lfRemoved <- glmQLFit(
 #Create Boolean vectors indicating which columns of the design matrix correspond
 #to individual treatments:
 index_main_effects <- function(design) {
-  is.RPIP <<- str_detect(colnames(design), "RPIP")
-  is.VSP <<- str_detect(colnames(design), "VSP")
-  is.Untargeted <<- str_detect(colnames(design), "None")
-  is.Filtrate <<- str_detect(colnames(design), "filtrate")
-  is.Retentate <<- str_detect(colnames(design), "retentate")
-  is.Unfiltered <<- str_detect(colnames(design), "unfiltered")
-  is.NanoA <<- str_detect(colnames(design), "A\\.")
-  is.NanoB <<- str_detect(colnames(design), "A&B")
-  is.DirectExt <<- str_detect(colnames(design), "none")
+  index_list <- list(
+    is.RPIP = str_detect(colnames(design), "RPIP"),
+    is.VSP = str_detect(colnames(design), "VSP"),
+    is.Untargeted = str_detect(colnames(design), "None"),
+    is.Filtrate = str_detect(colnames(design), "filtrate"),
+    is.Retentate = str_detect(colnames(design), "retentate"),
+    is.Unfiltered = str_detect(colnames(design), "unfiltered"),
+    is.NanoA = str_detect(colnames(design), "A\\."),
+    is.NanoB = str_detect(colnames(design), "A&B"),
+    is.DirectExt = str_detect(colnames(design), "none")
+  )
+  
+  treat_matrix <- do.call(cbind, index_list)
+  return(treat_matrix)
 }
 
 index_main_effects(design_arg)
