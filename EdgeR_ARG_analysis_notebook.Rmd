@@ -138,7 +138,6 @@ edger_arg_fit_lfRemoved <- glmQLFit(
 
 Make a grid of Boolean vectors indicating whether or not each sample received
 each treatment:
-
 ```{r}
 #Create Boolean vectors indicating which columns of the design matrix correspond
 #to individual treatments:
@@ -157,4 +156,36 @@ index_main_effects <- function(design) {
 index_main_effects(design_arg)
 ```
 
+Make contrasts:
+```{r}
+#Convenience function for peeping the results:
+top25 <- function(result) {
+  topTags(result, n = 25, sort.by = "PValue")
+}
+
+edger_volcano <- function(edger_result, title = "") {
+  ggplot(edger_result$table, aes(x = logFC, 
+                                 y = -log10(PValue))) +
+    geom_point() +
+    ggtitle(title)
+}
+
+#Main effect of RPIP vs. untargeted:
+RPIP_vs_unt_all_treatments_args <- glmQLFTest(edger_arg_fit_lfRemoved, 
+                                       contrast = is.RPIP - is.Untargeted)
+
+RPIP_vs_unt_Filtrate_NTboth_args <- glmQLFTest(edger_arg_fit_lfRemoved,
+  contrast = (is.RPIP & is.Filtrate) - (is.Untargeted & is.Filtrate))
+
+RPIP_vs_unt_Retentate_NTboth_args <- glmQLFTest(edger_arg_fit_lfRemoved,
+  contrast = (is.RPIP & is.Retentate) - (is.Untargeted & is.Retentate))
+
+RPIP_vs_unt_Unfiltered_NTboth_args <- glmQLFTest(edger_arg_fit_lfRemoved,
+  contrast = (is.RPIP & is.Unfiltered) - (is.Untargeted & is.Unfiltered))
+
+```
+```{r}
+table_ <- RPIP_vs_unt_Unfiltered_NTboth_args$table
+ggplot(table_, aes(x = logFC, y = -log10(PValue))) + geom_point()
+```
 
