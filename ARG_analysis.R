@@ -1,196 +1,189 @@
 ###Run import_deeparg_results.R before this script
 library(tidyverse)
+library(edgeR)
 
 #Read in the imported/formatted table
 rpip_v_unt_deeparg_results <- read_csv(
   "imported_deeparg_reports/imported_deeparg_results.csv"
   )
 
-####Prepare for DESeq2
-deeparg_metadata <- rpip_v_unt_deeparg_results %>%
-  select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type, 
-         Enrichment) %>%
-  distinct()
 
-deeparg_count_matrix <- rpip_v_unt_deeparg_results %>%
-  mutate(ARG_w_class = paste(ARG, predicted_ARG_class, sep = ":")) %>%
-  pivot_wider(id_cols = ARG_w_class,
-              names_from = UniqueID,
-              values_from = NumReads,
-              values_fill = 0)
-
-write_csv(deeparg_metadata, "imported_deeparg_reports/deeparg_metadata.csv")
-write_csv(deeparg_count_matrix, "imported_deeparg_reports/deeparg_count_matrix.csv")
-
-###DESeq2 analysis
-library(tidyverse)
-library(DESeq2)
-library(pheatmap)
-setwd("/projects/bios_microbe/cowen20/rprojects/targeted_panels/")
-
-deeparg_count_table <- read_csv("deeparg_count_matrix_DS2.csv", guess_max = Inf)
-
-#Convert to matrix
-deeparg_count_matrix <- deeparg_count_table %>%
-  select(!ARG_w_class) %>%
-  as.matrix()
-row.names(deeparg_count_matrix) <- deeparg_count_table$ARG_w_class
+###EdgeR analysis
+edger_arg_count_table <- read_csv(
+  "imported_deeparg_reports/deeparg_count_matrix.csv", guess_max = Inf
+  )
 
 #Load metadata  
-deeparg_sample_metadata <- read.csv("deeparg_DS2_sample_metadata.csv", row.names = 1, stringsAsFactors = TRUE)
-deeparg_sample_metadata$LIMS_ID <- factor(deeparg_sample_metadata$LIMS_ID)
+edger_arg_metadata <- read_csv(
+  "imported_deeparg_reports/deeparg_metadata.csv",
+  guess_max = Inf
+  ) %>%
+  arrange(UniqueID)
 
-#Check sample names in same order
-sum(colnames(deeparg_count_matrix) != rownames(deeparg_sample_metadata))
-
-#Perform DESeq2 analysis
-deeparg_dds <- DESeqDataSetFromMatrix(countData = deeparg_count_matrix,
-                                     colData = deeparg_sample_metadata,
-                                     design = ~ LIMS_ID + Enrichment + Fraction + Nanotrap_type)
+#edger_arg_metadata$LIMS_ID <- factor(edger_arg_metadata$LIMS_ID)
 
 
-
-deeparg_dds <- DESeq(deeparg_dds)
-
-deeparg_result_table <- data.frame(results(deeparg_dds))
-
-
-#Set reference levels
-deeparg_dds$Enrichment <- relevel(deeparg_dds$Enrichment, ref = "None")
-deeparg_dds$Fraction <- relevel(deeparg_dds$Fraction, ref = "unfiltered")
-deeparg_dds$Nanotrap_type <- relevel(deeparg_dds$Nanotrap_type, ref = "none")
-
-deeparg_dds <- DESeq(deeparg_dds)
-
-View(data.frame(mcols(deeparg_dds)))
-
-#heatmap
-
-dsheatmap <- function(ds2_obj, an_source, an_name) {
-  vsd_dds <- varianceStabilizingTransformation(ds2_obj, blind = TRUE)
-  vsd_mat_dds <- assay(vsd_dds)
-  vsd_cor_dds <- cor(vsd_mat_dds)
-  pheatmap(vsd_cor_dds, annotation = select(an_source, an_name))
+prepare_arg_count_table_for_edgeR <- function(count_table, group) {
+  #This will ensure columns and their order match in counts/metadata:
+  acounts <- count_table[, c("ARG_w_class", group$UniqueID)]
+  
+  #Sanity check (make sure sample names and order match in counts and group data):
+  mismatches <- sum(colnames(acounts[,2:ncol(acounts)]) != group$UniqueID)
+  if (mismatches != 0) {
+    stop("Something is wrong; the samples in the count table don't match the \
+         samples in the group data.")
+  }
+  return(acounts)
 }
 
-dsheatmap(deeparg_dds, deeparg_sample_metadata, "Enrichment")
-dsheatmap(deeparg_dds, deeparg_sample_metadata, "Nanotrap_type")
-dsheatmap(deeparg_dds, deeparg_sample_metadata, "Fraction")
-dsheatmap(deeparg_dds, deeparg_sample_metadata, "LIMS_ID")
+edger_arg_count_table <- prepare_arg_count_table_for_edgeR(edger_arg_count_table,
+                                                      edger_arg_metadata)
+
+###Generate a design matrix for EdgeR:
+arg_generate_levels <- function(group_df) {
+  #Use LIMS_ID to control for which sample we started with:
+  LIMS_ID <- factor(group_df$LIMS_ID)
+  
+  #Define explanatory variables as factors and order them to have an appropriate
+  #baseline:  
+  Fraction <- factor(group_df$Fraction, levels = c("unfiltered", 
+                                                   "retentate", 
+                                                   "filtrate"))
+  
+  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", "A", "A&B"))
+  
+  Enrichment <- factor(group_df$Enrichment, levels = c("None", "RPIP"))
+  
+  #Create a tibble containing all combinations of treatment variables:
+  treat_tb <- expand.grid(Fraction = levels(Fraction),
+                          Nanotrap_type = levels(Nanotrap_type),
+                          Enrichment = levels(Enrichment),
+                          stringsAsFactors = FALSE)
+  
+  #Create an empty list, then add every possible combination of treatment variables:
+  treat_list <- vector("list", length = nrow(treat_tb) - 1)
+  
+  for(row in 2:nrow(treat_tb)) {
+    treat_vec <- (Fraction == treat_tb[row, 1] & 
+                    Nanotrap_type == treat_tb[row, 2] &
+                    Enrichment == treat_tb[row, 3])
+    treat_list[[row - 1]] <- treat_vec
+    names(treat_list) <- paste(treat_tb[, 1], treat_tb[, 2], treat_tb[, 3], sep = ".")[-1]
+  }
+  
+  treat_mat <- lapply(treat_list, as.numeric) %>% as_tibble() %>% as.matrix()
+  
+  #Start model with only LIMS_ID as explanatory variable:
+  design <- model.matrix(~LIMS_ID)
+  
+  #Append all of the boolean treatment combinations to the model matrix:
+  design <- cbind(design, treat_mat)
+  
+  #And there we have it, the model matrix! 
+  return(design)
+}
 
 
-vsd_deeparg_dds <- varianceStabilizingTransformation(deeparg_dds, blind = TRUE)
-vsd_mat_deeparg_dds <- assay(vsd_deeparg_dds)
-vsd_cor_deeparg_dds <- cor(vsd_mat_deeparg_dds)
-pheatmap(vsd_cor_deeparg_dds, annotation = select(deeparg_sample_metadata, Enrichment))
-
-#PCA
-plotPCA(vsd_deeparg_dds, intgroup = "LIMS_ID", pcsToUse = c(1,2))
-plotPCA(vsd_deeparg_dds, intgroup = "Enrichment")
-#plotPCA(vsd_deeparg_dds, intgroup = "site")
-plotPCA(vsd_deeparg_dds, intgroup = "Nanotrap_type")
-plotPCA(vsd_deeparg_dds, intgroup = "Fraction")
-
-#Dispersion
-plotDispEsts(deeparg_dds)
+#Now run the design generator to get a model matrix:
+design_arg <- arg_generate_levels(edger_arg_metadata)
 
 
-#Contrast RPIP
-rpipvsnone_deeparg_res <- results(deeparg_dds,
-                                       contrast = c("Enrichment", 
-                                                    "RPIP",
-                                                    "None"),
-                                       alpha = 0.05)
-rpipvsnone_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Enrichment", "RPIP", "None"),
-                                         res = rpipvsnone_deeparg_res, type = "ashr")
+###Fit the model
+#Create a DGEList object (what EdgeR works with) from the count matrix:
+edger_arg_dge <- DGEList(
+  counts = edger_arg_count_table
+)
 
-resultsNames(deeparg_dds)
+#Find low-frequency args that don't give us enough information to be useful but
+#mess with the analysis:
+edger_arg_dge_lf_remover <- filterByExpr(
+  edger_arg_dge, 
+  design = design_arg)
 
-summary(rpipvsnone_deeparg_res)
-View(data.frame(rpipvsnone_deeparg_res))
+edger_arg_dge_lfRemoved <- edger_arg_dge[
+  edger_arg_dge_lf_remover, , keep.lib.sizes = FALSE
+]
 
-plotMA(rpipvsnone_deeparg_res)
-mcols(rpipvsnone_deeparg_res)
+#Fit the model:
+edger_arg_disp_lfRemoved <- estimateDisp(
+  y = edger_arg_dge_lfRemoved,
+  design = design_arg
+)
 
-
-#Contrast filtration
-filtratevsunfiltered_deeparg_res <- results(deeparg_dds,
-                                  contrast = c("Fraction", 
-                                               "filtrate",
-                                               "unfiltered"),
-                                  alpha = 0.05)
-filtratevsunfiltered_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Fraction", "filtrate", "unfiltered"),
-                                    res = filtratevsunfiltered_deeparg_res, type = "ashr")
-
-summary(filtratevsunfiltered_deeparg_res)
-View(data.frame(filtratevsunfiltered_deeparg_res))
-
-plotMA(filtratevsunfiltered_deeparg_res)
-
-retentatevsunfiltered_deeparg_res <- results(deeparg_dds,
-                                             contrast = c("Fraction",
-                                                          "retentate",
-                                                          "unfiltered"),
-                                             alpha = 0.05)
-
-retentatevsunfiltered_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Fraction", "retentate", "unfiltered"),
-                                               res = retentatevsunfiltered_deeparg_res, type = "ashr")
-
-summary(retentatevsunfiltered_deeparg_res)
-View(data.frame(retentatevsunfiltered_deeparg_res))
-
-plotMA(retentatevsunfiltered_deeparg_res)
+edger_arg_fit_lfRemoved <- glmQLFit(
+  edger_arg_disp_lfRemoved, 
+  design_arg
+)
 
 
-#Contrast Nanotraps
-nanotrapAvsnone_deeparg_res <- results(deeparg_dds,
-                                       contrast = c("Nanotrap_type",
-                                                    "A",
-                                                    "none"),
-                                       alpha = 0.05)
+#Create Boolean vectors indicating which columns of the design matrix correspond
+#to individual treatments:
+index_main_effects <- function(design) {
+  is.RPIP <<- str_detect(colnames(design), "RPIP")
+  is.VSP <<- str_detect(colnames(design), "VSP")
+  is.Untargeted <<- str_detect(colnames(design), "None")
+  is.Filtrate <<- str_detect(colnames(design), "filtrate")
+  is.Retentate <<- str_detect(colnames(design), "retentate")
+  is.Unfiltered <<- str_detect(colnames(design), "unfiltered")
+  is.NanoA <<- str_detect(colnames(design), "A\\.")
+  is.NanoB <<- str_detect(colnames(design), "A&B")
+  is.DirectExt <<- str_detect(colnames(design), "none")
+}
 
-nanotrapAvsnone_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Nanotrap_type", "A", "none"),
-                                         res = nanotrapAvsnone_deeparg_res, type = "ashr")
+index_main_effects(design_arg)
 
+top25 <- function(result) {
+  topTags(result, n = 25, sort.by = "PValue")
+}
 
-summary(nanotrapAvsnone_deeparg_res)
-View(data.frame(nanotrapAvsnone_deeparg_res))
-plotMA(nanotrapAvsnone_deeparg_res)
+###RPIP - Untargeted:
+#Main effect:
+RPIP_all_treatments_args <- glmQLFTest(edger_arg_fit_lfRemoved, 
+                                       contrast = is.RPIP - is.Untargeted)
+top25(RPIP_all_treatments_args)
+#No NT, no filtration:
+RPIP_vs_Unt_DirExt_Unfiltered_arg <- glmQLFTest(edger_arg_fit_lfRemoved, 
+ contrast = (is.RPIP & is.Unfiltered & is.DirectExt) - 
+   (is.Untargeted & is.Unfiltered & is.DirectExt))
+top25(RPIP_vs_Unt_DirExt_Unfiltered_arg)
 
+#NTA, no filtration:
+RPIP_vs_Unt_NanoA_Unfiltered_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.Unfiltered & is.NanoA) - (is.Untargeted & is.Unfiltered & is.NanoA))
+top25(RPIP_vs_Unt_NanoA_Unfiltered_90conf_no_rrna)
 
-nanotrapBAvsnone_deeparg_res <- results(deeparg_dds,
-                                       contrast = c("Nanotrap_type",
-                                                    "A&B",
-                                                    "none"),
-                                       alpha = 0.05)
+#NTB, no filtration:
+RPIP_vs_Unt_NanoBA_Unfiltered_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.NanoB & is.Unfiltered) - (is.Untargeted & is.NanoB & is.Unfiltered))
+top25(RPIP_vs_Unt_NanoBA_Unfiltered_90conf_no_rrna)
 
-nanotrapBAvsnone_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Nanotrap_type", "A&B", "none"),
-                                         res = nanotrapBAvsnone_deeparg_res, type = "ashr")
+#No NT, filtrate:
+RPIP_vs_Unt_DirExt_Filtrate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.Filtrate & is.DirectExt) - (is.Untargeted & is.Filtrate & is.DirectExt))
+top25(RPIP_vs_Unt_DirExt_Filtrate_90conf_no_rrna)
 
+#NTA, filtrate:
+RPIP_vs_Unt_NanoA_Filtrate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.NanoA & is.Filtrate) - (is.Untargeted & is.NanoA & is.Filtrate))
+top25(RPIP_vs_Unt_NanoA_Filtrate_90conf_no_rrna)
 
-summary(nanotrapBAvsnone_deeparg_res)
-View(data.frame(nanotrapBAvsnone_deeparg_res))
-plotMA(nanotrapBAvsnone_deeparg_res)
+#NTB, filtrate:
+RPIP_vs_Unt_NanoBA_Filtrate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.NanoB & is.Filtrate) - (is.Untargeted & is.NanoB & is.Filtrate))
+top25(RPIP_vs_Unt_NanoBA_Filtrate_90conf_no_rrna)
 
+#No NT, retentate:
+RPIP_vs_Unt_DirExt_Retentate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.Retentate & is.DirectExt) - (is.Untargeted & is.Retentate & is.DirectExt))
+top25(RPIP_vs_Unt_DirExt_Retentate_90conf_no_rrna)
 
+#NTA, retentate:
+RPIP_vs_Unt_NanoA_Retentate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.NanoA & is.Retentate) - (is.Untargeted & is.NanoA & is.Retentate))
+top25(RPIP_vs_Unt_NanoA_Retentate_90conf_no_rrna)
 
+#NTB, retentate:
+RPIP_vs_Unt_NanoBA_Retentate_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.NanoB & is.Retentate) - (is.Untargeted & is.NanoB & is.Retentate))
+top25(RPIP_vs_Unt_NanoBA_Retentate_90conf_no_rrna)
 
-nanotrapBAvsA_deeparg_res <- results(deeparg_dds,
-                                        contrast = c("Nanotrap_type",
-                                                     "A&B",
-                                                     "A"),
-                                        alpha = 0.05)
-
-nanotrapBAvsA_deeparg_res <- lfcShrink(deeparg_dds, contrast = c("Nanotrap_type", "A&B", "A"),
-                                          res = nanotrapBAvsA_deeparg_res, type = "ashr")
-
-
-summary(nanotrapBAvsA_deeparg_res)
-View(data.frame(nanotrapBAvsA_deeparg_res))
-plotMA(nanotrapBAvsA_deeparg_res)
-
-
-
+########################################3
+##########################################
+########################################
+######################################3
+##########################################
 ###Look at targeted taxa (RPIP)
 
 #Create a df of DESeq results:

@@ -105,3 +105,21 @@ ggplot(combined_args_and_nonargs_per_sample, aes(x = UniqueID, y = NumReads,
 #Save the table for later:
 write_csv(combined_args_and_nonargs_per_sample,
           "imported_deeparg_reports/imported_deeparg_results.csv")
+
+
+###Prepare for EdgeR
+deeparg_metadata <- combined_args_and_nonargs_per_sample %>%
+  select(UniqueID, LIMS_ID, Treatment, site, Fraction, Nanotrap_type, 
+         Enrichment) %>%
+  distinct()
+
+deeparg_count_matrix <- combined_args_and_nonargs_per_sample %>%
+  mutate(ARG_w_class = paste(ARG, predicted_ARG_class, sep = ":")) %>%
+  pivot_wider(id_cols = ARG_w_class,
+              names_from = UniqueID,
+              values_from = NumReads,
+              values_fill = 0)
+
+write_csv(deeparg_metadata, "imported_deeparg_reports/deeparg_metadata.csv")
+write_csv(deeparg_count_matrix, "imported_deeparg_reports/deeparg_count_matrix.csv")
+
