@@ -7,7 +7,6 @@ rpip_v_unt_deeparg_results <- read_csv(
   "imported_deeparg_reports/imported_deeparg_results.csv"
   )
 
-
 ###EdgeR analysis
 edger_arg_count_table <- read_csv(
   "imported_deeparg_reports/deeparg_count_matrix.csv", guess_max = Inf
@@ -27,7 +26,8 @@ prepare_arg_count_table_for_edgeR <- function(count_table, group) {
   #This will ensure columns and their order match in counts/metadata:
   acounts <- count_table[, c("ARG_w_class", group$UniqueID)]
   
-  #Sanity check (make sure sample names and order match in counts and group data):
+  #Sanity check (make sure sample names and order match in counts and group 
+  #data):
   mismatches <- sum(colnames(acounts[,2:ncol(acounts)]) != group$UniqueID)
   if (mismatches != 0) {
     stop("Something is wrong; the samples in the count table don't match the \
@@ -36,8 +36,10 @@ prepare_arg_count_table_for_edgeR <- function(count_table, group) {
   return(acounts)
 }
 
-edger_arg_count_table <- prepare_arg_count_table_for_edgeR(edger_arg_count_table,
-                                                      edger_arg_metadata)
+edger_arg_count_table <- prepare_arg_count_table_for_edgeR(
+  edger_arg_count_table,
+  edger_arg_metadata
+  )
 
 ###Generate a design matrix for EdgeR:
 arg_generate_levels <- function(group_df) {
@@ -50,9 +52,12 @@ arg_generate_levels <- function(group_df) {
                                                    "retentate", 
                                                    "filtrate"))
   
-  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", "A", "A&B"))
+  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", 
+                                                             "A", 
+                                                             "A&B"))
   
-  Enrichment <- factor(group_df$Enrichment, levels = c("None", "RPIP"))
+  Enrichment <- factor(group_df$Enrichment, levels = c("None", 
+                                                       "RPIP"))
   
   #Create a tibble containing all combinations of treatment variables:
   treat_tb <- expand.grid(Fraction = levels(Fraction),
@@ -60,7 +65,8 @@ arg_generate_levels <- function(group_df) {
                           Enrichment = levels(Enrichment),
                           stringsAsFactors = FALSE)
   
-  #Create an empty list, then add every possible combination of treatment variables:
+  #Create an empty list, then add every possible combination of treatment
+  #variables:
   treat_list <- vector("list", length = nrow(treat_tb) - 1)
   
   for(row in 2:nrow(treat_tb)) {
@@ -68,7 +74,10 @@ arg_generate_levels <- function(group_df) {
                     Nanotrap_type == treat_tb[row, 2] &
                     Enrichment == treat_tb[row, 3])
     treat_list[[row - 1]] <- treat_vec
-    names(treat_list) <- paste(treat_tb[, 1], treat_tb[, 2], treat_tb[, 3], sep = ".")[-1]
+    names(treat_list) <- paste(treat_tb[, 1], 
+                               treat_tb[, 2], 
+                               treat_tb[, 3], 
+                               sep = ".")[-1]
   }
   
   treat_mat <- lapply(treat_list, as.numeric) %>% as_tibble() %>% as.matrix()
