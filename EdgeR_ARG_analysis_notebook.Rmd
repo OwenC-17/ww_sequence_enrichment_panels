@@ -1,0 +1,160 @@
+---
+title: "Analysis of DeepARG reports with EdgeR"
+---
+
+Import needed libraries:
+```{r}
+library(tidyverse)
+library(edgeR)
+```
+
+Read in data:
+```{r}
+#If data has not already been imported from the raw DeepARG output:
+#source("import_deeparg_results.R")
+
+
+#ARG counts per sample:
+edger_arg_count_table <- read_csv(
+  "imported_deeparg_reports/deeparg_count_matrix.csv", guess_max = Inf
+  )
+
+#Metadata (AKA group data)  
+edger_arg_metadata <- read_csv(
+  "imported_deeparg_reports/deeparg_metadata.csv",
+  guess_max = Inf
+  ) %>%
+  arrange(UniqueID)
+```
+
+Make sure the data are formatted correctly:
+```{r}
+prepare_arg_count_table_for_edgeR <- function(count_table, group) {
+  #This will ensure columns and their order match in counts/metadata:
+  acounts <- count_table[, c("ARG_w_class", group$UniqueID)]
+  
+  #Sanity check (make sure sample names and order match in counts and group 
+  #data):
+  mismatches <- sum(colnames(acounts[,2:ncol(acounts)]) != group$UniqueID)
+  if (mismatches != 0) {
+    stop("Something is wrong; the samples in the count table don't match the \
+         samples in the group data.")
+  }
+  return(acounts)
+}
+
+edger_arg_count_table <- prepare_arg_count_table_for_edgeR(
+  edger_arg_count_table,
+  edger_arg_metadata
+  )
+```
+
+Generate the EdgeR design matrix:
+```{r}
+arg_generate_levels <- function(group_df) {
+  #Use LIMS_ID to control for which sample we started with:
+  LIMS_ID <- factor(group_df$LIMS_ID)
+  
+  #Define explanatory variables as factors and order them so they have an 
+  #appropriate baseline:  
+  Fraction <- factor(group_df$Fraction, levels = c("unfiltered", 
+                                                   "retentate", 
+                                                   "filtrate"))
+  
+  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("none", 
+                                                             "A", 
+                                                             "A&B"))
+  
+  Enrichment <- factor(group_df$Enrichment, levels = c("None", 
+                                                       "RPIP"))
+  
+  #Create a tibble containing all combinations of treatment variables:
+  treat_tb <- expand.grid(Fraction = levels(Fraction),
+                          Nanotrap_type = levels(Nanotrap_type),
+                          Enrichment = levels(Enrichment),
+                          stringsAsFactors = FALSE)
+  
+  #Create an empty list, then add every possible combination of treatment
+  #variables:
+  treat_list <- vector("list", length = nrow(treat_tb) - 1)
+  
+  for(row in 2:nrow(treat_tb)) {
+    treat_vec <- (Fraction == treat_tb[row, 1] & 
+                    Nanotrap_type == treat_tb[row, 2] &
+                    Enrichment == treat_tb[row, 3])
+    treat_list[[row - 1]] <- treat_vec
+    names(treat_list) <- paste(treat_tb[, 1], 
+                               treat_tb[, 2], 
+                               treat_tb[, 3], 
+                               sep = ".")[-1]
+  }
+  
+  treat_mat <- lapply(treat_list, as.numeric) %>% as_tibble() %>% as.matrix()
+  
+  #Start model with only LIMS_ID as explanatory variable:
+  design <- model.matrix(~LIMS_ID)
+  
+  #Append all of the boolean treatment combinations to the model matrix:
+  design <- cbind(design, treat_mat)
+  
+  #And there we have it, the model matrix! 
+  return(design)
+}
+
+
+#Now run the design generator to get a model matrix:
+design_arg <- arg_generate_levels(edger_arg_metadata)
+```
+
+
+Make an EdgeR model using the design matrix that was just generated:
+```{r}
+#Create a DGEList object (what EdgeR works with) from the count matrix:
+edger_arg_dge <- DGEList(
+  counts = edger_arg_count_table
+)
+
+#Find low-frequency args that don't give us enough information to be useful but
+#mess with the analysis:
+edger_arg_dge_lf_remover <- filterByExpr(
+  edger_arg_dge, 
+  design = design_arg)
+
+edger_arg_dge_lfRemoved <- edger_arg_dge[
+  edger_arg_dge_lf_remover, , keep.lib.sizes = FALSE
+]
+
+#Fit the model:
+edger_arg_disp_lfRemoved <- estimateDisp(
+  y = edger_arg_dge_lfRemoved,
+  design = design_arg
+)
+
+edger_arg_fit_lfRemoved <- glmQLFit(
+  edger_arg_disp_lfRemoved, 
+  design_arg
+)
+```
+
+Make a grid of Boolean vectors indicating whether or not each sample received
+each treatment:
+
+```{r}
+#Create Boolean vectors indicating which columns of the design matrix correspond
+#to individual treatments:
+index_main_effects <- function(design) {
+  is.RPIP <<- str_detect(colnames(design), "RPIP")
+  is.VSP <<- str_detect(colnames(design), "VSP")
+  is.Untargeted <<- str_detect(colnames(design), "None")
+  is.Filtrate <<- str_detect(colnames(design), "filtrate")
+  is.Retentate <<- str_detect(colnames(design), "retentate")
+  is.Unfiltered <<- str_detect(colnames(design), "unfiltered")
+  is.NanoA <<- str_detect(colnames(design), "A\\.")
+  is.NanoB <<- str_detect(colnames(design), "A&B")
+  is.DirectExt <<- str_detect(colnames(design), "none")
+}
+
+index_main_effects(design_arg)
+```
+
+
