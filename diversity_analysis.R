@@ -1,6 +1,6 @@
 library(Rsamtools)
 library(taxonomizr)
-        
+library(tidyverse)        
 sqlPath = "/projects/bios_microbe/cowen20/ref_db/taxonomizr/accessionTaxa.sql"
 
 pparam <- PileupParam(max_depth = 999999, include_insertions = TRUE, distinguish_strands = FALSE)
@@ -135,14 +135,15 @@ cl <- makeCluster(48)
 registerDoParallel(cl)
 
 rpip_freqs <- foreach(pu = rpip_pileups, .packages = c("dplyr")) %dopar% {
+  message(pu$sampleID[1])
   freqs_from_pileup(pu)
 }
 
 stopCluster(cl)
 
-vsp_freqs <- bind_rows(vsp_freqs)
-vsp_freqs$Enrichment <- "VSP"
-vsp_h <- calculate_h(vsp_freqs)
+rpip_freqs <- bind_rows(rpip_freqs)
+rpip_freqs$Enrichment <- "RPIP"
+rpip_h <- calculate_h(rpip_freqs)
 vsp_pi <- calculate_pi_from_h(vsp_h)
 
 unt_vs_vsp_bam_location <- paste0("input/link_to_raw_data/untargeted/",
