@@ -1,6 +1,6 @@
 library(Rsamtools)
 library(taxonomizr)
-
+        
 sqlPath = "/projects/bios_microbe/cowen20/ref_db/taxonomizr/accessionTaxa.sql"
 
 pparam <- PileupParam(max_depth = 999999, include_insertions = TRUE, distinguish_strands = FALSE)
@@ -117,4 +117,53 @@ ggplot(unt_and_vsp_pi, aes(x = species, y = persitepi, colour = Enrichment)) +
   geom_boxplot() + 
   scale_y_log10() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  
+
+
+
+################################################################################
+rpip_bam_location <- paste0("input/link_to_raw_data/rpip_panels/raw_fastqs/",
+                           "fastp_out_no_dedup/bwa_out/",
+                           "mapped_and_low_complexity_removed")
+rpip_bams <- list.files(rpip_bam_location, pattern = "*sorted.bam$", 
+                       full.names = TRUE)
+rpip_pileups <- lapply(rpip_bams, makePileup)
+
+library(doParallel)
+library(foreach)
+
+cl <- makeCluster(48)
+registerDoParallel(cl)
+
+rpip_freqs <- foreach(pu = rpip_pileups, .packages = c("dplyr")) %dopar% {
+  freqs_from_pileup(pu)
+}
+
+stopCluster(cl)
+
+vsp_freqs <- bind_rows(vsp_freqs)
+vsp_freqs$Enrichment <- "VSP"
+vsp_h <- calculate_h(vsp_freqs)
+vsp_pi <- calculate_pi_from_h(vsp_h)
+
+unt_vs_vsp_bam_location <- paste0("input/link_to_raw_data/untargeted/",
+                                  "raw_fastqs/fastp_out_no_dedup/bwa_out/",
+                                  "vs_vsp/mapped_and_low_complexity_removed")
+unt_vs_vsp_bams <- list.files(unt_vs_vsp_bam_location, pattern = "*sorted.bam$", 
+                              full.names = TRUE)
+unt_vs_vsp_pileups <- lapply(unt_vs_vsp_bams, makePileup)
+unt_vs_vsp_freqs <- lapply(unt_vs_vsp_pileups, freqs_from_pileup)
+unt_vs_vsp_freqs <- bind_rows(unt_vs_vsp_freqs)
+unt_vs_vsp_freqs$Enrichment <- "None"
+unt_vs_vsp_h <- calculate_h(unt_vs_vsp_freqs)
+unt_vs_vsp_pi <- calculate_pi_from_h(unt_vs_vsp_h)
+
+unt_and_vsp_pi <- bind_rows(unt_vs_vsp_pi, vsp_pi) %>%
+  parse_sample_ids() %>%
+  parse_locations()
+
+unt_and_vsp_pi <- addTax(unt_and_vsp_pi)
+
+ggplot(unt_and_vsp_pi, aes(x = species, y = persitepi, colour = Enrichment)) + 
+  geom_boxplot() + 
+  scale_y_log10() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
