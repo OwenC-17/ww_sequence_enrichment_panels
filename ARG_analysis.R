@@ -144,7 +144,7 @@ index_main_effects <- function(design) {
   return(treat_matrix)
 }
 
-index_main_effects(design_arg)
+arg_treat_matrix <- index_main_effects(design_arg)
 
 top25 <- function(result) {
   topTags(result, n = 25, sort.by = "PValue")
