@@ -80,7 +80,6 @@ ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = portion_reads_remov
 ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = portion_bases_removed)) + geom_boxplot()
 ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = summary.after_filtering.total_reads)) + geom_boxplot()
 
-
 ################################
 ###Import merged read reports###
 ################################
