@@ -148,3 +148,7 @@ index_main_effects <- function(design) {
 }
 
 index_main_effects(design_90conf_noRrna)
+
+top25 <- function(result) {
+  topTags(result, n = 25, sort.by = "logFC")
+}
