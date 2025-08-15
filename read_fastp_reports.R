@@ -1,6 +1,7 @@
 library(jsonlite)
 library(tidyverse)
 
+source("helper_functions.R")
 ###Define filepaths
 topdir <- "input/link_to_raw_data/"
 vsp_fastp_no_dedup_dir <- paste0(topdir,

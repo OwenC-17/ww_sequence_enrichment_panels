@@ -22,22 +22,6 @@ assert_k2_report_coltypes <- function(k2_report_df) {
   return(fixed)
 }
 
-parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
-  parsed <- tax_table %>%
-    mutate(Fraction = str_replace_all(
-      !!sym(treatment_col),
-      c("^F.$" = "filtrate",
-        "^R.$" = "retentate",
-        "^U.$" = "unfiltered")
-    )) %>%
-    mutate(Nanotrap_type = str_replace_all(
-      !!sym(treatment_col),
-      c("^.A$" = "A",
-        "^.B$" = "A&B",
-        "^.D$" = "none")
-    ))
-}
-
 #######################
 #####Load the data#####
 #######################

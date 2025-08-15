@@ -64,6 +64,23 @@ parse_locations <- function(taxtable) {
     )))
 }
 
+
+parse_sample_treatments <- function(tax_table, treatment_col = "Treatment") {
+  parsed <- tax_table %>%
+    mutate(Fraction = str_replace_all(
+      !!sym(treatment_col),
+      c("^F.$" = "filtrate",
+        "^R.$" = "retentate",
+        "^U.$" = "unfiltered")
+    )) %>%
+    mutate(Nanotrap_type = str_replace_all(
+      !!sym(treatment_col),
+      c("^.A$" = "A",
+        "^.B$" = "A&B",
+        "^.D$" = "none")
+    ))
+}
+
 fill_tax_NAs = function(tax_table) {
   ###Fill in blank spaces with lowest applicable taxa IDs.
   
