@@ -1,32 +1,6 @@
 library(tidyverse)
 library(zoo)
 
-#Main dir that contains all targeted panel results
-topdir <- "input/link_to_raw_data/"
-
-#Subdir with k2 reports from each panel
-vsp_dir_00conf <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
-                         "kraken2_out/k2_nt_20240530/rrna_labeled/")
-rpip_dir_00conf <- paste0(topdir, "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
-                          "kraken2_out/k2_nt_20240530/rrna_labeled/")
-unt_dir_00conf <- paste0(topdir, "untargeted/raw_fastqs/fastp_out_no_dedup/",
-                         "kraken2_out/k2_nt_20240530/rrna_labeled/")
-
-vsp_dir_00conf_dedup <- paste0(vsp_dir_00conf, "deduped/")
-rpip_dir_00conf_dedup <- paste0(rpip_dir_00conf, "deduped/")
-unt_dir_00conf_dedup <- paste0(unt_dir_00conf, "deduped/")
-
-vsp_dir_90conf <- paste0(topdir, "vsp_panels/raw_fastqs/fastp_out_no_dedup/",
-                         "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
-rpip_dir_90conf <- paste0(topdir, "rpip_panels/raw_fastqs/fastp_out_no_dedup/",
-                          "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
-unt_dir_90conf <- paste0(topdir, "untargeted/raw_fastqs/fastp_out_no_dedup/",
-                         "kraken2_out/k2_nt_20240530/90conf/rrna_labeled/")
-
-vsp_dir_90conf_dedup <- paste0(vsp_dir_90conf, "deduped")
-rpip_dir_90conf_dedup <- paste0(rpip_dir_90conf, "deduped")
-unt_dir_90conf_dedup <- paste0(unt_dir_90conf, "deduped")
-
 generate_tax_table = function(tax_report_tsv) {
   ###create a table from a kraken2 taxonomy report whose location is specified
   ###at tax_report_tsv
