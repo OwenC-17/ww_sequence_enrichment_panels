@@ -77,7 +77,8 @@ rm(vsp_k2_reports_00conf, rpip_k2_reports_00conf, unt_k2_reports_00conf,
    vsp_k2_reports_90conf, rpip_k2_reports_90conf, unt_k2_reports_90conf)
 
 dir.create("imported_k2_reports")
-write_csv(all_k2_reports_anyConf, "imported_k2_reports/all_k2_reports_anyConf.csv")
+write_csv(all_k2_reports_anyConf, 
+          "imported_k2_reports/all_k2_reports_anyConf.csv")
 
 all_k2_reports_anyConf_dedup <- bins_rows(vsp_k2_reports_00conf_dedup,
                                           rpip_k2_reports_00conf_dedup,
@@ -86,7 +87,9 @@ all_k2_reports_anyConf_dedup <- bins_rows(vsp_k2_reports_00conf_dedup,
                                           rpip_k2_reports_90conf_dedup,
                                           unt_k2_reports_90conf_dedup)
 
-rm(vsp_k2_reports_00conf_dedup, rpip_k2_reports_00conf_dedup, unt_k2_reports_00conf_dedup,
-   vsp_k2_reports_90conf_dedup, rpip_k2_reports_90conf_dedup, unt_k2_reports_90conf_dedup)
+rm(vsp_k2_reports_00conf_dedup, rpip_k2_reports_00conf_dedup, 
+   unt_k2_reports_00conf_dedup, vsp_k2_reports_90conf_dedup, 
+   rpip_k2_reports_90conf_dedup, unt_k2_reports_90conf_dedup)
 
-write_csv(all_k2_reports_anyConf_dedup, "imported_k2_reports/all_k2_reports_anyConf_dedup.csv")
+write_csv(all_k2_reports_anyConf_dedup, 
+          "imported_k2_reports/all_k2_reports_anyConf_dedup.csv")
