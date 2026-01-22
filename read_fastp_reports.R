@@ -16,7 +16,6 @@ unt_fastp_no_dedup_dir <- paste0(topdir,
                                  "untargeted/raw_fastqs/fastp_out_no_dedup/",
                                  "reports/")
 
-
 #Function to load one fastp report:
 read_fastp_report <- function(fastp_json_path) {
   fastp_json <- fromJSON(fastp_json_path)
@@ -77,14 +76,44 @@ all_fastp_summaries_unmerged <- rbind(rpip_fastp_summaries_unmerged,
                                       vsp_fastp_summaries_unmerged,
                                       unt_fastp_summaries_unmerged)
 
-ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = portion_reads_removed)) + geom_boxplot()
-ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = portion_bases_removed)) + geom_boxplot()
-ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, y = summary.after_filtering.total_reads)) + geom_boxplot()
 
-################################
-###Import merged read reports###
-################################
-#Function to load one fastp report:
+write_rds(all_fastp_summaries_unmerged,
+          "input/modified/fastp_summaries_unmerged_before_dedup.rds")
+
+write_csv(all_fastp_summaries_unmerged,
+          "input/modified/fastp_summaries_unmerged_before_dedup.csv")
+
+
+#######################################
+#####Read in deduplication reports#####
+#######################################
+vsp_dedup_report_dir <- paste0(topdir,
+  "vsp_panels/raw_fastqs/fastp_out_no_dedup/deduped/")
+rpip_dedup_report_dir <- paste0(topdir,
+  "rpip_panels/raw_fastqs/fastp_out_no_dedup/deduped/")
+unt_dedup_report_dir <- paste0(topdir,
+  "untargeted/raw_fastqs/fastp_out_no_dedup/deduped/")
+
+vsp_dedup_report <- import_fastp_summaries(vsp_dedup_report_dir) %>%
+  mutate(Enrichment = "VSP")
+rpip_dedup_report <- import_fastp_summaries(rpip_dedup_report_dir) %>%
+  mutate(Enrichment = "RPIP")
+unt_dedup_report <- import_fastp_summaries(unt_dedup_report_dir) %>%
+  mutate(Enrichment = "None")
+
+all_dedup_reports <- rbind(vsp_dedup_report,
+                           rpip_dedup_report,
+                           unt_dedup_report)
+
+write_rds(all_dedup_reports, "input/modified/fastp_dedup_reports.rds")
+
+write_csv(all_dedup_reports, "input/modified/fastp_dedup_reports.csv")
+
+
+####################################
+#####Import merged read reports#####
+####################################
+#Function to load one merged fastp report:
 read_merged_fastp_report <- function(fastp_json_path) {
   fastp_json <- fromJSON(fastp_json_path)
   fastp_df <- as.data.frame(fastp_json[-c(4:8)])
@@ -94,7 +123,7 @@ read_merged_fastp_report <- function(fastp_json_path) {
   return(fastp_df)
 }
 
-#Function to load ALL fastp reports:
+#Function to load ALL merged fastp reports:
 import_merged_fastp_summaries <- function(directory) {
   file_list <- list.files(directory, pattern = "*\\.json$", full.names = TRUE)
   fastp_reports <- lapply(file_list, read_merged_fastp_report)
@@ -110,14 +139,14 @@ import_merged_fastp_summaries <- function(directory) {
   fastp_reports <- parse_sample_treatments(fastp_reports)
   fastp_reports <- parse_locations(fastp_reports)
   fastp_reports <- mutate(fastp_reports,
-                          num_reads_removed = summary.before_filtering.total_reads - 
-                            (2 * summary.after_filtering.total_reads),
-                          portion_reads_removed = num_reads_removed / 
-                            summary.before_filtering.total_reads,
-                          num_bases_removed = summary.before_filtering.total_bases -
-                            summary.after_filtering.total_bases,
-                          portion_bases_removed = num_bases_removed /
-                            summary.before_filtering.total_bases
+                    num_reads_removed = summary.before_filtering.total_reads - 
+                    (2 * summary.after_filtering.total_reads),
+                    portion_reads_removed = num_reads_removed / 
+                    summary.before_filtering.total_reads,
+                    num_bases_removed = summary.before_filtering.total_bases -
+                    summary.after_filtering.total_bases,
+                    portion_bases_removed = num_bases_removed /
+                    summary.before_filtering.total_bases
   )
   return(fastp_reports)
 }
@@ -126,14 +155,25 @@ import_merged_fastp_summaries <- function(directory) {
 rpip_fastp_merged_no_dedup_dir <- paste0(topdir,
                                          "rpip_panels/raw_fastqs/",
                                          "fastp_merged_no_dedup/reports/")
+rpip_fastp_merged_then_dedup_dir <- paste0(
+  topdir, "rpip_panels/raw_fastqs/fastp_merged_no_dedup/deduped"
+)
 
 unt_fastp_merged_no_dedup_dir <- paste0(topdir,
                                          "untargeted/raw_fastqs/",
                                          "fastp_merged_no_dedup/reports/")
+unt_fastp_merged_then_dedup_dir <- paste0(
+  topdir, "untargeted/raw_fastqs/fastp_merged_no_dedup/deduped"
+)
 
 rpip_fastp_summaries_merged <- import_merged_fastp_summaries(
   rpip_fastp_merged_no_dedup_dir
   ) %>%
+  mutate(Enrichment = "RPIP")
+
+rpip_fastp_summaries_merged_dedup <- import_merged_fastp_summaries(
+  rpip_fastp_merged_then_dedup_dir
+) %>%
   mutate(Enrichment = "RPIP")
 
 unt_fastp_summaries_merged <- import_merged_fastp_summaries(
@@ -141,12 +181,26 @@ unt_fastp_summaries_merged <- import_merged_fastp_summaries(
   ) %>%
   mutate(Enrichment = "None")
 
+unt_fastp_summaries_merged_dedup <- import_merged_fastp_summaries(
+  unt_fastp_merged_then_dedup_dir
+) %>%
+  mutate(Enrichment = "None")
+
 #Combine
 both_fastp_summaries_merged <- rbind(rpip_fastp_summaries_merged,
                                      unt_fastp_summaries_merged)
 
-ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = portion_reads_removed)) + geom_boxplot()
-ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = portion_bases_removed)) + geom_boxplot()
-ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = summary.after_filtering.total_reads)) + geom_boxplot()
-ggplot(both_fastp_summaries_merged, aes(x = Enrichment, y = summary.before_filtering.total_reads)) + geom_boxplot()
-ggplot(both_fastp_summaries_merged, aes(x = site, y = summary.after_filtering.total_reads)) + geom_boxplot()
+both_fastp_summaries_merged_dedup <- rbind(rpip_fastp_summaries_merged_dedup,
+                                           unt_fastp_summaries_merged_dedup)
+
+write_rds(both_fastp_summaries_merged, 
+          "input/modified/fastp_summaries_merged_before_dedup.rds")
+
+write_csv(both_fastp_summaries_merged, 
+          "input/modified/fastp_summaries_merged_before_dedup.csv")
+
+write_rds(both_fastp_summaries_merged_dedup, 
+          "input/modified/fastp_merged_dedup_reports.rds")
+
+write_csv(both_fastp_summaries_merged_dedup,
+          "input/modified/fastp_merged_dedup_reports.csv")
