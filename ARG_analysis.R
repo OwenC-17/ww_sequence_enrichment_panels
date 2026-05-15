@@ -7,10 +7,18 @@ rpip_v_unt_deeparg_results <- read_csv(
   "imported_deeparg_reports/imported_deeparg_results.csv"
   )
 
+rpip_v_unt_deeparg_results_dedup <- read_csv(
+  "imported_deeparg_reports/imported_deeparg_results_dedup.csv"
+)
+
 ###EdgeR analysis
 edger_arg_count_table <- read_csv(
   "imported_deeparg_reports/deeparg_count_matrix.csv", guess_max = Inf
   )
+
+edger_arg_count_table_dedup <- read_csv(
+  "imported_deeparg_reports/deeparg_count_matrix_dedup.csv"
+)
 
 #Load metadata  
 edger_arg_metadata <- read_csv(
@@ -19,7 +27,7 @@ edger_arg_metadata <- read_csv(
   ) %>%
   arrange(UniqueID)
 
-#edger_arg_metadata$LIMS_ID <- factor(edger_arg_metadata$LIMS_ID)
+edger_arg_metadata$LIMS_ID <- factor(edger_arg_metadata$LIMS_ID)
 
 
 prepare_arg_count_table_for_edgeR <- function(count_table, group) {
@@ -40,6 +48,11 @@ edger_arg_count_table <- prepare_arg_count_table_for_edgeR(
   edger_arg_count_table,
   edger_arg_metadata
   )
+
+edger_arg_count_table_dedup <- prepare_arg_count_table_for_edgeR(
+  edger_arg_count_table_dedup,
+  edger_arg_metadata
+)
 
 ###Generate a design matrix for EdgeR:
 arg_generate_levels <- function(group_df) {
@@ -103,6 +116,10 @@ edger_arg_dge <- DGEList(
   counts = edger_arg_count_table
 )
 
+edger_arg_dge_dedup <- DGEList(
+  counts = edger_arg_count_table_dedup
+)
+
 #Find low-frequency args that don't give us enough information to be useful but
 #mess with the analysis:
 edger_arg_dge_lf_remover <- filterByExpr(
@@ -111,6 +128,14 @@ edger_arg_dge_lf_remover <- filterByExpr(
 
 edger_arg_dge_lfRemoved <- edger_arg_dge[
   edger_arg_dge_lf_remover, , keep.lib.sizes = FALSE
+]
+
+edger_arg_dge_lf_remover_dedup <- filterByExpr(
+  edger_arg_dge_dedup, 
+  design = design_arg)
+
+edger_arg_dge_lfRemoved_dedup <- edger_arg_dge_dedup[
+  edger_arg_dge_lf_remover_dedup, , keep.lib.sizes = FALSE
 ]
 
 #Fit the model:
@@ -124,42 +149,57 @@ edger_arg_fit_lfRemoved <- glmQLFit(
   design_arg
 )
 
+edger_arg_disp_lfRemoved_dedup <- estimateDisp(
+  y = edger_arg_dge_lfRemoved_dedup,
+  design = design_arg
+)
+
+edger_arg_fit_lfRemoved_dedup <- glmQLFit(
+  edger_arg_disp_lfRemoved_dedup, 
+  design_arg
+)
+
 
 #Create Boolean vectors indicating which columns of the design matrix correspond
 #to individual treatments:
-index_main_effects <- function(design) {
-  index_list <- list(
-    is.RPIP = str_detect(colnames(design), "RPIP"),
-    is.VSP = str_detect(colnames(design), "VSP"),
-    is.Untargeted = str_detect(colnames(design), "None"),
-    is.Filtrate = str_detect(colnames(design), "filtrate"),
-    is.Retentate = str_detect(colnames(design), "retentate"),
-    is.Unfiltered = str_detect(colnames(design), "unfiltered"),
-    is.NanoA = str_detect(colnames(design), "A\\."),
-    is.NanoB = str_detect(colnames(design), "A&B"),
-    is.DirectExt = str_detect(colnames(design), "none")
-  )
-  
-  treat_matrix <- do.call(cbind, index_list)
-  return(treat_matrix)
-}
 
-arg_treat_matrix <- index_main_effects(design_arg)
+is.RPIP = str_detect(colnames(design_arg), "RPIP")
+is.VSP = str_detect(colnames(design_arg), "VSP")
+is.Untargeted = str_detect(colnames(design_arg), "None")
+is.Filtrate = str_detect(colnames(design_arg), "filtrate")
+is.Retentate = str_detect(colnames(design_arg), "retentate")
+is.Unfiltered = str_detect(colnames(design_arg), "unfiltered")
+is.NanoA = str_detect(colnames(design_arg), "A\\.")
+is.NanoB = str_detect(colnames(design_arg), "A&B")
+is.DirectExt = str_detect(colnames(design_arg), "none")
 
-top25 <- function(result) {
-  topTags(result, n = 25, sort.by = "PValue")
+sigTags <- function(result) {
+  topTags(result, n = nrow(result$table), sort.by = "PValue")$table %>%
+    filter(FDR <= 0.05)
 }
 
 ###RPIP - Untargeted:
 #Main effect:
 RPIP_all_treatments_args <- glmQLFTest(edger_arg_fit_lfRemoved, 
                                        contrast = is.RPIP - is.Untargeted)
-top25(RPIP_all_treatments_args)
+sig_RPIP_all_treatments_args <- sigTags(RPIP_all_treatments_args)
+
+RPIP_all_treatments_args_dedup <- glmQLFTest(edger_arg_fit_lfRemoved_dedup,
+                                             contrast = is.RPIP - is.Untargeted)
+sig_RPIP_all_treatments_args_dedup <- sigTags(RPIP_all_treatments_args_dedup)
+
 #No NT, no filtration:
 RPIP_vs_Unt_DirExt_Unfiltered_arg <- glmQLFTest(edger_arg_fit_lfRemoved, 
  contrast = (is.RPIP & is.Unfiltered & is.DirectExt) - 
    (is.Untargeted & is.Unfiltered & is.DirectExt))
 top25(RPIP_vs_Unt_DirExt_Unfiltered_arg)
+
+
+RPIP_vs_Unt_DirExt_Unfiltered_arg_dedup <- glmQLFTest(edger_arg_fit_lfRemoved_dedup, 
+    contrast = (is.RPIP & is.Unfiltered & is.DirectExt) - 
+    (is.Untargeted & is.Unfiltered & is.DirectExt))
+
+top25(RPIP_vs_Unt_DirExt_Unfiltered_arg_dedup)
 
 #NTA, no filtration:
 RPIP_vs_Unt_NanoA_Unfiltered_90conf_no_rrna <- glmQLFTest(fit_families_90conf_no_rrna_expressed, contrast = (is.RPIP & is.Unfiltered & is.NanoA) - (is.Untargeted & is.Unfiltered & is.NanoA))
