@@ -1,7 +1,8 @@
 library(lme4)
 library(tidyverse)
 
-#source("read_fastp_reports.R")
+source("read_fastp_reports.R")
+
 
 all_dedup_reports$PreEnrichmentID <- paste(
   all_dedup_reports$LIMS_ID,
@@ -25,7 +26,7 @@ glmm_dupRate_Enrichment_model <- glmmTMB(rate ~ Enrichment + Fraction +
 glmm_dupRate_Enrichment_model %>% summary()
 
 glmmB_dupRate_Enrichment_model <- glmmTMB(cbind(num_reads_removed,
-                                              summary.after_filtering.total_reads) ~ Enrichment + Fraction +
+                                              summary.after_filtering.total_reads) ~ Enrichment +
                                            (1|LIMS_ID),
                                          data = all_dedup_reports, 
                                          family = binomial)
@@ -33,21 +34,22 @@ glmmB_dupRate_Enrichment_model <- glmmTMB(cbind(num_reads_removed,
 glmmB_dupRate_Enrichment_model %>% summary()
 
 #Diagnostic plots normality tests
-qqnorm(residuals(lmer_dupRate_Enrichment_model))
-qqline(residuals(lmer_dupRate_Enrichment_model))
+qqnorm(residuals(glmmB_dupRate_Enrichment_model))
+qqline(residuals(glmmB_dupRate_Enrichment_model))
 
-shapiro.test(residuals(lmer_dupRate_Enrichment_model)) 
+shapiro.test(residuals(glmmB_dupRate_Enrichment_model)) 
+#Normal-ish
+
+nortest::ad.test(residuals(glmmB_dupRate_Enrichment_model))
 #Non-normal
-
-nortest::ad.test(residuals(lmer_dupRate_Enrichment_model))
-#Still non-normal
 
 car::leveneTest(rate ~ Enrichment, data = all_fastp_summaries_unmerged)
 #Still non-normal
 
 
 ##############Non-parametric tests
-#Friedman (Rank-based) test:
+#Friedman (Rank-based) test; PreEnrichmentID controls for original sample ID and
+#filtration/nanotrap pretreatments:
 fr_dupRate_Enrichment_model <- friedman.test(rate ~ Enrichment | PreEnrichmentID,
                                              data = all_dedup_reports)
 #Show model output:
