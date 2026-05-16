@@ -69,7 +69,8 @@ rpip_gene_df <- rpip_and_unt_gene_protein_homolog %>%
 
 #Write the filtered ARG results to a file for plotting:
 write_rds(rpip_gene_df,
-          "input/modified/rpip_and_unt_rgi_gene_protein_homolog.rds")
+          "input/modified/rpip_and_unt_rgi_gene_protein_homolog.rds"
+          )
 
 
 #Get read counts per ARO term (for count matrix)
@@ -118,17 +119,15 @@ generate_levels <- function(group_df) {
   #Use LIMS_ID to control for which sample we started with:
   LIMS_ID <- factor(group_df$LIMS_ID)
   
-  #Define explanatory variables as factors and order them to have an appropriate
-  #baseline:  
-  Fraction <- factor(group_df$Fraction, levels = c("Unfil", 
-                                                   "Ret", 
-                                                   "Fil"))
+  #Define explanatory variables as factors:
+  Fraction <- factor(group_df$Fraction,
+                     levels = c("Unfil", "Ret", "Fil"))
   
-  Nanotrap_type <- factor(group_df$Nanotrap_type, levels = c("DirEx", "NT-A", "NT-AB"))
+  Nanotrap_type <- factor(group_df$Nanotrap_type,
+                          levels = c("DirEx", "NT-A", "NT-AB"))
   
-  Enrichment <- factor(group_df$Enrichment)
-  Enrichment <- relevel(Enrichment, ref = "Non-targeted")
-  
+  Enrichment <- factor(group_df$Enrichment) %>%
+    relevel(ref = "Non-targeted")
   
   #Create a tibble containing all combinations of treatment variables:
   treat_tb <- expand.grid(Fraction = levels(Fraction),
@@ -136,7 +135,8 @@ generate_levels <- function(group_df) {
                           Enrichment = levels(Enrichment),
                           stringsAsFactors = FALSE)
   
-  #Create an empty list, then add every possible combination of treatment variables:
+  #Create an empty list, then add every possible combination of treatment
+  #variables:
   treat_list <- vector("list", length = nrow(treat_tb) - 1)
   
   for(row in 2:nrow(treat_tb)) {
@@ -155,7 +155,7 @@ generate_levels <- function(group_df) {
   #Start model with only LIMS_ID as explanatory variable:
   design <- model.matrix(~LIMS_ID)
   
-  #Append all of the boolean treatment combinations to the model matrix:
+  #Append all of the Boolean treatment combinations to the model matrix:
   design <- cbind(design, treat_mat)
   
   #And there we have it, the model matrix! 
@@ -321,9 +321,13 @@ arg_gene_annotations <- rpip_and_unt_gene_protein_homolog %>%
 #Add resistance categories:
 arg_gene_annotations_cat <- arg_gene_annotations %>%
   mutate(category = case_when(
-    str_detect(tolower(`AMR Gene Family`), "beta-lactam") ~ "beta-lactamase",
-    str_detect(`Drug Class`, ";", negate = TRUE) ~ str_remove(`Drug Class`, "antibiotic"),
-    str_detect(`Drug Class`, ";") & str_detect(tolower(`Resistance Mechanism`), "efflux") ~ "efflux pump (multivalent)",
+    str_detect(tolower(`AMR Gene Family`), "beta-lactam") ~
+      "beta-lactamase",
+    str_detect(`Drug Class`, ";", negate = TRUE) ~
+      str_remove(`Drug Class`, "antibiotic"),
+    str_detect(`Drug Class`, ";") &
+      str_detect(tolower(`Resistance Mechanism`), "efflux") ~
+      "efflux pump (multivalent)",
     .default = "Other multivalent resistance genes"
   ))
 
