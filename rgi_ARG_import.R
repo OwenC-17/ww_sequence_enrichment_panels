@@ -40,7 +40,7 @@ unt_allele_big_df <- bind_rows(unt_allele_dfs, .id = "filename")
 
 #Label enrichment as RPIP or not:
 rpip_allele_big_df$Enrichment <- "RPIP"
-unt_allele_big_df$Enrichment <- "Non-targeted"
+unt_allele_big_df$Enrichment <- "None"
 
 #Extract the sample IDs from the file names:
 rpip_allele_big_df$sample_id <- substr(rpip_allele_big_df$filename, 5, 12)
@@ -125,7 +125,7 @@ unt_gene_big_df <- bind_rows(unt_gene_dfs, .id = "filename")
 
 #Label as RPIP or not:
 rpip_gene_big_df$Enrichment <- "RPIP"
-unt_gene_big_df$Enrichment <- "Non-targeted"
+unt_gene_big_df$Enrichment <- "None"
 
 #Extract sample id from filename:
 rpip_gene_big_df$sample_id <- substr(rpip_gene_big_df$filename, 5, 12)
@@ -156,4 +156,5 @@ rpip_and_unt_gene_and_info <- rpipAndUnt_gene_big_df %>%
          UniqueID = paste(sample_id, Enrichment, sep = "-"))
 
 #Write file for later:
-write_rds(rpip_and_unt_gene_and_info, "input/modified/rpip_and_unt_rgi_gene_and_info.rds")
+write_rds(rpip_and_unt_gene_and_info,
+          "input/modified/rpip_and_unt_rgi_gene_and_info.rds")
