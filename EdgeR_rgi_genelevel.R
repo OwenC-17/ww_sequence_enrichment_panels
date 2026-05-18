@@ -338,3 +338,6 @@ RPIP_genelevel_results <- RPIP_genelevel_results %>%
 #Write file for later:
 write_rds(RPIP_genelevel_results,
           "input/modified/edgeR_rgi_genesgroupedbyARO_results.rds")
+
+#Write the DGE list as well:
+write_rds(rpip_gene_DGElist, "input/modified/edgeR_rgi_gene_DGE.rds")
