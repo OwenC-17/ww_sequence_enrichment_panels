@@ -47,11 +47,6 @@ rpip_gene_group_data <- group_data %>%
   filter(Enrichment %in% c("RPIP", "Non-targeted")) %>%
   left_join(rpip_libsizes)
 
-#Get group data for RPIP only
-rpip_only_group <- rpip_gene_group_data %>%
-  filter(Enrichment == "RPIP") %>%
-  rename("libsize" = "summary.after_dedup.total_reads")
-
 #DGE object created in EdgeR_rgi_genelevel.R:
 rpip_gene_DGElist <- read_rds("input/modified/edgeR_rgi_gene_DGE.rds")
 
@@ -82,7 +77,8 @@ gene_community_matrix_noNA_complete <- cbind(gene_community_matrix_noNA, Other)
 gene_relative <- gene_community_matrix_noNA / rpip_only_group$libsize
 
 #And again, this time including "Other" column
-gene_relative_complete <- gene_community_matrix_noNA_complete / rpip_only_group$libsize
+gene_relative_complete <- gene_community_matrix_noNA_complete / 
+  rpip_only_group$libsize
 
 #Wisconsin transformation
 gene_wisconsin <- wisconsin(gene_community_matrix_noNA)
