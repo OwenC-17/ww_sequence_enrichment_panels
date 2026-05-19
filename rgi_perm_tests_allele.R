@@ -142,14 +142,16 @@ ggplot(allele_bray_wisconsin_nmds_2d_df,
        aes(x = MDS1, y = MDS2, colour = Enrichment)) +
   geom_point()
 
-#Jaccard, not including "Other" (shouldn't need to include since it is present in all samples)
+#Jaccard, not including "Other"
+#(shouldn't need to include since it is present in all samples)
 allele_jacc_nmds_2d_df <- make_mds_df(allele_community_matrix_noNA,
                                       rpip_allele_group_data, dist = "jaccard")
 ggplot(allele_jacc_nmds_2d_df,
        aes(x = MDS1, y = MDS2, colour = Enrichment)) +
   geom_point()
 
-#Jaccard-type Chao distance, not including "Other" (shouldn't need to include since it is present in all samples)
+#Jaccard-type Chao distance, not including "Other"
+#(shouldn't need to include since it is present in all samples)
 allele_chao_nmds_2d_df <- make_mds_df(allele_community_matrix_noNA,
                                       rpip_allele_group_data, dist = "chao")
 ggplot(allele_chao_nmds_2d_df,
