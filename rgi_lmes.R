@@ -291,14 +291,18 @@ summary(R2.REML)
 rpip_gene_group_data_plot <- rpip_gene_group_data %>%
   mutate(Fraction = factor(Fraction, levels = c("Fil", "Ret", "Unfil")))
 
-ggplot(rpip_gene_group_data, aes(x = Nanotrap_type, y = relative_richness*10^6, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data,
+       aes(x = Nanotrap_type, y = relative_richness*10^6, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Unique ARGs per million reads") +
   xlab("Concentration method")
 
 
-ggplot(rpip_gene_group_data_plot, aes(x = Fraction, y = relative_richness*10^6, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Fraction, y = relative_richness*10^6, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Unique ARGs per million reads") +
@@ -318,13 +322,17 @@ SMod <- lme(shannon ~ 1 + Fraction + Nanotrap_type + Enrichment +
 plot(SMod)
 anova(SMod)
 
-ggplot(rpip_gene_group_data_plot, aes(x = Fraction, y = shannon, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Fraction, y = shannon, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Shannon") +
   xlab("Fraction")
 
-ggplot(rpip_gene_group_data_plot, aes(x = Nanotrap_type, y = shannon, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Nanotrap_type, y = shannon, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Shannon") +
@@ -345,13 +353,17 @@ SiMod <- lme(simpson ~ 1 + Fraction + Nanotrap_type + Enrichment +
 plot(SiMod)
 anova(SiMod)
 
-ggplot(rpip_gene_group_data_plot, aes(x = Fraction, y = simpson, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Fraction, y = simpson, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Simpson") +
   xlab("Fraction")
 
-ggplot(rpip_gene_group_data_plot, aes(x = Nanotrap_type, y = simpson, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Nanotrap_type, y = simpson, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Simpson") +
@@ -372,13 +384,17 @@ FiMod <- lme(fisher ~ 1 + Fraction + Nanotrap_type + Enrichment +
 plot(FiMod)
 anova(FiMod)
 
-ggplot(rpip_gene_group_data_plot, aes(x = Fraction, y = fisher, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Fraction, y = fisher, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Fisher") +
   xlab("Fraction")
 
-ggplot(rpip_gene_group_data_plot, aes(x = Nanotrap_type, y = fisher, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Nanotrap_type, y = fisher, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Fisher") +
@@ -399,16 +415,18 @@ ChMod <- lme(chao1 ~ 1 + Fraction + Nanotrap_type + Enrichment +
 plot(ChMod)
 anova(ChMod)
 
-ggplot(rpip_gene_group_data_plot, aes(x = Fraction, y = chao1, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Fraction, y = chao1, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Chao1") +
   xlab("Fraction")
 
-ggplot(rpip_gene_group_data_plot, aes(x = Nanotrap_type, y = chao1, fill = Enrichment)) + geom_boxplot() +
+ggplot(rpip_gene_group_data_plot,
+       aes(x = Nanotrap_type, y = chao1, fill = Enrichment)) +
+  geom_boxplot() +
   scale_fill_manual(values = c("deeppink3", "royalblue3")) +
   theme_bw() +
   ylab("Fisher") +
   xlab("Nanotrap_type")
-
-

@@ -125,7 +125,7 @@ write_csv(sample_metadata_noRrna,
 write_csv(sample_metadata_withRrna, 
           "edger_tables/edger_sample_metadata_withRrna.csv")
 
-write_csv(family_count_matrix_noRrna, 
+write_csv(family_count_matrix_noRrna,
           "edger_tables/edger_family_count_matrix_noRrna.csv")
 write_csv(family_count_matrix_noRrna_dedup, 
           "edger_tables/edger_family_count_matrix_noRrna_dedup.csv")

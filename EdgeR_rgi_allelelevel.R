@@ -31,12 +31,9 @@ rpip_and_unt_allele_and_info <- read_rds(
   "input/modified/rpip_and_unt_rgi_allele_and_info.rds"
   )
 
-#Filter to only protein homolog model with >= 13 MAPQ (95% mapping accuracy)
-#AND over 50 bp covered:
+#Filter to only protein homolog model:
 rpip_and_unt_allele_protein_homolog <- rpip_and_unt_allele_and_info %>%
-  filter(`Reference Model Type` == "protein homolog model")# %>%
-#  filter(`Average MAPQ (Completely Mapped Reads)` >= 13) %>%
-#  filter(`Length Coverage (bp)` >= 50)
+  filter(`Reference Model Type` == "protein homolog model")
 
 #Get read counts
 rpip_libsizes = rpip_and_unt_allele_protein_homolog %>%
@@ -354,3 +351,6 @@ RPIP_allele_results <- RPIP_allele_results %>%
 #Write file for later:
 write_rds(RPIP_allele_results,
           "input/modified/edgeR_rgi_alleles_notgrouped_results.rds")
+
+#Write the DGE list as well:
+write_rds(rpip_allele_DGElist, "input/modified/edgeR_rgi_allele_DGE.rds")

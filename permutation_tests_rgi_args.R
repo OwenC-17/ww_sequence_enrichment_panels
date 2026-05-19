@@ -1,3 +1,6 @@
+#Perform ordinations and permutation tests on RGI output (GENE level)
+
+
 library(tidyverse)
 library(edgeR) #To be able to read DGE objects
 library(vegan)
@@ -41,6 +44,11 @@ group_data <- read_csv("DS2_sample_metadata_w_rrna.csv") %>%
          Enrichment = str_replace_all(Enrichment,
                                       c("None" = "Non-targeted"))
   )
+
+#Get read counts
+rpip_libsizes = rpip_and_unt_gene_protein_homolog %>%
+  select(UniqueID, summary.after_dedup.total_reads) %>%
+  distinct()
 
 #Remove VSP samples (irrelevant here)
 rpip_gene_group_data <- group_data %>%
