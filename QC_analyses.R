@@ -2,7 +2,9 @@ library(tidyverse)
 library(cowplot)
 
 #Data from read_fastp_reports.R
-all_fastp_summaries_unmerged <- read_rds("input/modified/all_fastp_reports_dupdedup.rds")
+all_fastp_summaries_unmerged <- read_rds(
+  "input/modified/all_fastp_reports_dupdedup.rds
+  ")
 summary(all_fastp_summaries_unmerged)
 
 #############################################################
@@ -66,11 +68,22 @@ View(QC_summary_statistics)
 ###############################
 QC_length_ins_summary <- all_fastp_summaries_unmerged %>%
   group_by(Enrichment) %>%
-  summarize(mean_mean_pre_read1length = mean(summary.before_filtering.read1_mean_length),
-            mean_mean_post_read1length = mean(summary.after_filtering.read1_mean_length),
-            mean_mean_pre_read2length = mean(summary.before_filtering.read2_mean_length),
-            mean_mean_post_read2length = mean(summary.after_filtering.read2_mean_length),
-            mean_peak_post_ins_size = mean(insert_size_peak))
+  summarize(mean_mean_pre_read1length = mean(
+              summary.before_filtering.read1_mean_length
+              ),
+            mean_mean_post_read1length = mean(
+              summary.after_filtering.read1_mean_length
+              ),
+            mean_mean_pre_read2length = mean(
+              summary.before_filtering.read2_mean_length
+              ),
+            mean_mean_post_read2length = mean(
+              summary.after_filtering.read2_mean_length
+              ),
+            mean_peak_post_ins_size = mean(
+              insert_size_peak
+              )
+            )
 
 
 #########################################
@@ -88,7 +101,8 @@ ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment,
 #Portion of reads removed due to to many N bases:
 ggplot(all_fastp_summaries_unmerged, aes(x = Enrichment, 
                                          y = filtering_result.too_many_N_reads /
-                                           summary.before_filtering.total_reads)) +
+                                           summary.before_filtering.total_reads)
+       ) +
   geom_boxplot() +
   theme_bw() +
   ggtitle("Reads removed: too many N")

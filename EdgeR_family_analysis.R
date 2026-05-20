@@ -2,16 +2,34 @@ library(edgeR)
 library(tidyverse)
 
 #Family count tables:
-edger_family_count_table_withRrna <- read_csv("edger_tables/edger_family_count_matrix_withRrna.csv", 
-                                            show_col_types = FALSE)
-edger_family_count_table_noRrna <- read_csv("edger_tables/edger_family_count_matrix_noRrna.csv",
-                                             show_col_types = FALSE)
+edger_family_count_table_withRrna <- read_csv(
+  "edger_tables/edger_family_count_matrix_withRrna.csv", 
+  show_col_types = FALSE
+  )
+edger_family_count_table_noRrna <- read_csv(
+  "edger_tables/edger_family_count_matrix_noRrna.csv",
+  show_col_types = FALSE
+  )
+
+edger_family_count_table_noRrna_dedup <- read_csv(
+  "edger_tables/edger_family_count_matrix_noRrna_dedup.csv",
+  show_col_types = FALSE
+  )
+
+edger_family_count_table_withRrna_dedup <- read_csv(
+  "edger_tables/edger_family_count_matrix_withRrna_dedup.csv",
+  show_col_types = FALSE
+  )
 
 #Metadata (or group data in EdgeR lingo):
-group_data_withRrna <- read_csv("edger_tables/edger_sample_metadata_withRrna.csv", show_col_types = FALSE) %>%
+group_data_withRrna <- read_csv(
+  "edger_tables/edger_sample_metadata_withRrna.csv", 
+  show_col_types = FALSE) %>%
   arrange(by = UniqueID)
 
-group_data_noRrna <- read_csv("edger_tables/edger_sample_metadata_noRrna.csv", show_col_types = FALSE) %>%
+group_data_noRrna <- read_csv(
+  "edger_tables/edger_sample_metadata_noRrna.csv", 
+  show_col_types = FALSE) %>%
   arrange(by = UniqueID)
 
 filter_group_by_k2conf <- function(group, k2conf) {
@@ -54,6 +72,9 @@ group_data_90conf_noRrna <- filter_group_by_k2conf(group_data_noRrna, 0.9)
 edger_family_count_table_90conf_noRrna <- prepare_count_table_for_edgeR(
   edger_family_count_table_noRrna, group_data_90conf_noRrna
   )
+edger_family_count_table_90conf_noRrna_dedup <- prepare_count_table_for_edgeR(
+  edger_family_count_table_noRrna_dedup, group_data_90conf_noRrna
+)
 
 
 ###Generate a design matrix for EdgeR:
@@ -85,7 +106,10 @@ generate_levels <- function(group_df) {
                   Nanotrap_type == treat_tb[row, 2] &
                   Enrichment == treat_tb[row, 3])
     treat_list[[row - 1]] <- treat_vec
-    names(treat_list) <- paste(treat_tb[, 1], treat_tb[, 2], treat_tb[, 3], sep = ".")[-1]
+    names(treat_list) <- paste(treat_tb[, 1], 
+                               treat_tb[, 2], 
+                               treat_tb[, 3], 
+                               sep = ".")[-1]
   }
   
   treat_mat <- lapply(treat_list, as.numeric) %>% as.tibble() %>% as.matrix()
@@ -102,8 +126,7 @@ generate_levels <- function(group_df) {
 
 
 #Now run the design generator to get a model matrix:
-design_90conf_noRrna <- generate_levels2(group_data_90conf_noRrna)
-
+design_90conf_noRrna <- generate_levels(group_data_90conf_noRrna)
 
 ###Fit the model
 #Create a DGEList object (what EdgeR works with) from the count matrix:
@@ -111,15 +134,31 @@ edger_family_dge_90conf_noRrna <- DGEList(
   counts = edger_family_count_table_90conf_noRrna
   )
 
-#Find low-frequency taxa that don't give us enough information to be useful but mess 
-#with the analysis:
+edger_family_dge_90conf_noRrna_dedup <- DGEList(
+  counts = edger_family_count_table_90conf_noRrna_dedup
+)
+
+
+#Find low-frequency taxa that don't give us enough information to be useful but 
+#mess with the analysis:
 edger_family_dge_90conf_noRrna_lfRemover <- filterByExpr(
   edger_family_dge_90conf_noRrna, 
   design = design_90conf_noRrna)
 
-edger_family_dge_lfRemoved_90conf_noRrna <- family_90conf_no_rrna[
+edger_family_dge_lfRemoved_90conf_noRrna <- edger_family_dge_90conf_noRrna[
   edger_family_dge_90conf_noRrna_lfRemover, , keep.lib.sizes = FALSE
   ]
+
+#Again for deduped reads:
+edger_family_dge_90conf_noRrna_dedup_lfRemover <- filterByExpr(
+  edger_family_dge_90conf_noRrna_dedup, 
+  design = design_90conf_noRrna)
+
+edger_family_dge_lfRemoved_90conf_noRrna_dedup <- 
+  edger_family_dge_90conf_noRrna_dedup[
+  edger_family_dge_90conf_noRrna_lfRemover, , keep.lib.sizes = FALSE
+]
+
 
 #Fit the model:
 edger_family_disp_lfRemoved_90conf_noRrna <- estimateDisp(
@@ -130,6 +169,17 @@ edger_family_disp_lfRemoved_90conf_noRrna <- estimateDisp(
 edger_family_fit_lfRemoved_90conf_noRrna <- glmQLFit(
   edger_family_disp_lfRemoved_90conf_noRrna, 
   design_90conf_noRrna
+)
+
+#Again with deduped reads:
+edger_family_disp_lfRemoved_90conf_noRrna_dedup <- estimateDisp(
+  y = edger_family_dge_90conf_noRrna_dedup,
+  design = design_90conf_noRrna
+)
+
+edger_family_fit_lfRemoved_90conf_noRrna_dedup <- glmQLFit(
+  y = edger_family_disp_lfRemoved_90conf_noRrna_dedup,
+  design = design_90conf_noRrna
 )
 
 

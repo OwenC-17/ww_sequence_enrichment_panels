@@ -97,7 +97,8 @@ add_taxonomy <- function(coverage_table) {
   rawTaxa <- getRawTaxonomy(uniqueTaxId, sqlPath)
   rawTaxaDf <- bind_rows(rawTaxa, .id = "taxid")
   rawTaxaDf$taxid <- str_remove_all(rawTaxaDf$taxid, "\\s")
-  weird_accessions_annotated <- read_csv("/projects/bios_microbe/cowen20/rprojects/targeted_panels/input/weird_accessions_fixed.csv")
+  weird_accessions_annotated <- read_csv(paste0("/projects/bios_microbe/",
+      "cowen20/rprojects/targeted_panels/input/weird_accessions_fixed.csv"))
   weird_accessions_annotated <- rename(weird_accessions_annotated, rname = Accession)
   
   accessions2taxids <- taxonomyDf %>%

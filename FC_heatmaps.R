@@ -167,7 +167,7 @@ VSP_results_important$stars <- cut(
 
 
 
-ggplot(VSP_results_important, aes(x = Nanotrap_type, 
+VSP_heatmap <- ggplot(VSP_results_important, aes(x = Nanotrap_type, 
                                   y = Fraction, 
                                   fill = logFC)) +
   geom_tile(color = "black", linewidth = .5) +
@@ -178,7 +178,8 @@ ggplot(VSP_results_important, aes(x = Nanotrap_type,
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 10))+
   geom_text(aes(label = stars), size = 5, vjust = 0.5, fontface = "bold") +
-  xlab("Concentration method")
+  xlab("") +
+  ggtitle("VSP")
 
 
 
@@ -209,29 +210,14 @@ RPIP_results <- RPIP_results %>%
 
 RPIP_signif <- RPIP_results %>%
   filter(FDR <= 0.05)
-most_important <- signif %>%
-  group_by(Family) %>%
-  summarize(mean_logfc = mean(logFC)) %>%
-  arrange(desc(mean_logfc))
-most_important <- most_important[str_detect(most_important$Family, pattern = "^*viridae$"),]
-
-
-
+#most_important <- signif %>%
+#  group_by(Family) %>%
+#  summarize(mean_logfc = mean(logFC)) %>%
+#  arrange(desc(mean_logfc))
+#most_important <- most_important[str_detect(most_important$Family, pattern = "^*viridae$"),]
 
 RPIP_results_important <- RPIP_results %>%
   filter(Family %in% RPIP_signif$Family)
-
-
-ggplot(RPIP_results_important, aes(x = Nanotrap_type, 
-                                  y = Fraction, 
-                                  fill = logFC)) +
-  geom_tile() +
-  scale_fill_gradient(low = "white", high = "darkred") + 
-  facet_wrap(~ Family, ncol = 3) +
-  theme_minimal()
-
-RPIP_results_important <- RPIP_results_important %>% 
-  mutate(FDR = p.adjust(PValue, method = "BH"))
 
 RPIP_results_important$stars <- cut(
   RPIP_results_important$FDR,
@@ -241,15 +227,26 @@ RPIP_results_important$stars <- cut(
 
 
 
-ggplot(RPIP_results_important, aes(x = Nanotrap_type, 
+RPIP_heatmap <- ggplot(RPIP_results_important, aes(x = Nanotrap_type, 
                                   y = Fraction, 
                                   fill = logFC)) +
   geom_tile(color = "black", linewidth = .5) +
-  scale_fill_gradient(low = "white", high = "darkred") + 
+  scale_fill_gradient2(low = "deepskyblue4", mid = "white", high = "darkred") + 
   facet_wrap(~ Family, ncol = 3) +
   theme_minimal() +
   theme(strip.text = element_text(size = 12), 
         axis.title = element_text(size = 15),
         axis.text = element_text(size = 10))+
   geom_text(aes(label = stars), size = 5, vjust = 0.5, fontface = "bold") +
-  xlab("Concentration method")
+  xlab("Concentration method") +
+  ggtitle("RPIP")
+
+library(ggpubr)
+unloadNamespace("ggpubr")
+unloadNamespace("ggplot2")
+update.packages("ggplot2")
+library(ggplot2)
+library(ggpubr)
+ggarrange(VSP_heatmap, RPIP_heatmap, ncol = 1)
+
+
