@@ -172,6 +172,19 @@ vspANDunt_big_pileup_df <- bind_rows(vsp_big_pileup_df,
 #Save imported file:
 write_rds(vspANDunt_big_pileup_df, "input/modified/vspANDunt_big_pileup_df.rds")
 
+#Get rid of bases with no mapped reads
+vspunt_covered_bases <- vspANDunt_big_pileup_df %>%
+  group_by(sample_id, rname, Enrichment) %>%
+  filter(Depth >=1) %>%
+  summarize(bases_covered = n(),
+            total_mapped_bases = sum(Depth))
+
+vspunt_mutations_count <- vspANDunt_big_pileup_df %>%
+  group_by(sample_id, rname, Enrichment) %>%
+  filter(!Status %in% c("CONSERVED", "STAR")) %>%
+  summarize(mutation_count = n())
+
+
 
 ###############################
 #####Combine imported data#####
@@ -200,7 +213,7 @@ fastp_info_table <- read_rds(
 vsp_and_unt_counts_covstats_and_info <- vsp_and_unt_counts_and_covstats %>%
   left_join(fastp_info_table, by = c("UniqueID", "Enrichment")) %>%
   mutate(RA_nmapped = nmapped / summary.after_filtering.total_reads,
-         RA_bases_covered = bases_covered / summary.after_filtering.total_bases)
+         RA_bases = total_mapped_bases / summary.after_filtering.total_bases)
 
 write_rds(vsp_and_unt_counts_covstats_and_info,
           "input/modified/vsp_and_unt_counts_covstats_and_info.rds")
