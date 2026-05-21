@@ -2,6 +2,7 @@
 #IMPORTANT: Make sure at least available RAM is >400 GB or R will crash
 
 library(tidyverse)
+library(data.table)
 library(taxonomizr)
 
 
@@ -181,7 +182,7 @@ rpipANDunt_big_pileup_df <- bind_rows(rpip_big_pileup_df,
                                       unt_rpip_big_pileup_df) %>%
   mutate(sample_id = substr(filename, 5, 12)) %>%
   mutate(UniqueID = paste(sample_id, Enrichment, sep = "-")) %>%
-  mutate(rname = substr(Reference, 1, 11)) %>%
+  mutate(rname = Reference) %>%
   left_join(rpipunt_taxtable)
 
 #Save more memory:
@@ -193,27 +194,32 @@ write_rds(rpipANDunt_big_pileup_df,
           "input/modified/rpipANDunt_big_pileup_df.rds")
 gc()
 
+rpipunt_big_dt <- as.data.table(rpipANDunt_big_pileup_df)
+write_rds(rpipunt_big_dt, "input/modified/rpipANDunt_big_pileup_dt.rds")
+
 #Sum number of bases covered per reference:
-rpipunt_covered_bases <- rpipANDunt_big_pileup_df %>%
-  filter(Depth >= 1) %>%
-  group_by(sample_id, rname, Enrichment) %>%
-  summarize(bases_covered = n(),
-            total_mapped_bases = sum(Depth))
+rpipunt_covered_bases <- rpipunt_big_dt[
+  Depth >= 1,
+  .(bases_covered = .N, total_mapped_bases = sum(Depth)),
+  by = .(UniqueID, rname, Enrichment)
+]
 
 #Sum number of unconserved bases per reference:
-rpipANDunt_mutations_count <- rpipANDunt_big_pileup_df %>%
-  group_by(sample_id, rname, Enrichment) %>%
-  filter(!Status %in% c("CONSERVED", "STAR")) %>%
-  summarize(mutation_count = n())
-
+rpipunt_mutations_count <- rpipunt_big_dt[
+  !(Status %in% c("CONSERVED", "STAR")),
+  .(mutation_count = .N),
+  by = .(UniqueID, rname, Enrichment)
+]
 
 ###############################
 #####Combine imported data#####
 ###############################
+
 #Combine counts, coverage and mutation data
 rpip_and_unt_counts_and_covstats <- rpip_and_unt_counts_bigdf_tax %>%
-  left_join(rpipunt_covered_bases) %>%
-  left_join(rpipANDunt_mutations_count)
+  left_join(as_tibble(rpipunt_covered_bases)) %>%
+  left_join(as_tibble(rpipunt_mutations_count)) %>%
+  mutate(UniqueID = str_replace_all(UniqueID, "Non-targeted", "None"))
 
 #Set NAs to 0
 rpip_and_unt_counts_and_covstats[
@@ -225,14 +231,29 @@ rpip_and_unt_counts_and_covstats[
 fastp_info_table <- read_rds(
   "input/modified/all_fastp_reports_dupdedup.rds"
 ) %>%
-  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, sep = "-"))
+  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, sep = "-"),
+         Enrichment = str_replace_all(Enrichment, "None", "Non-targeted"))
 
 #Join the fastp data to the pileup data:
 rpip_and_unt_counts_covstats_and_info <- rpip_and_unt_counts_and_covstats %>%
   left_join(fastp_info_table, by = c("UniqueID", "Enrichment")) %>%
   mutate(RA_nmapped = nmapped / summary.after_filtering.total_reads,
-         RA_bases = total_mapped_bases / summary.after_filtering.total_bases)
+         RA_bases = total_mapped_bases / summary.after_filtering.total_bases,
+         prcov = bases_covered / rlength)
 
+#Recode E. brachy (where taxid is NA):
+rpip_and_unt_counts_covstats_and_info <- 
+  rpip_and_unt_counts_covstats_and_info %>%
+  mutate(
+    taxid = case_when(
+      str_starts(
+        name, "Eubacterium brachy ATCC 33089"
+      ) ~ "Eubacterium_brachy_ATCC_33089",
+      str_starts(
+        name, "MAG\\: \\[Eubacterium",
+      ) ~ "MAG:[Eubacterium]_brachy_isolate_JCVI_32_bin.35",
+      .default = taxid)
+  )
 
 #Save the file:
 write_rds(rpip_and_unt_counts_covstats_and_info,
