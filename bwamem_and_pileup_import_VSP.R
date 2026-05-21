@@ -213,7 +213,8 @@ fastp_info_table <- read_rds(
 vsp_and_unt_counts_covstats_and_info <- vsp_and_unt_counts_and_covstats %>%
   left_join(fastp_info_table, by = c("UniqueID", "Enrichment")) %>%
   mutate(RA_nmapped = nmapped / summary.after_filtering.total_reads,
-         RA_bases = total_mapped_bases / summary.after_filtering.total_bases)
+         RA_bases = total_mapped_bases / summary.after_filtering.total_bases,
+         prcov = bases_covered / rlength)
 
 write_rds(vsp_and_unt_counts_covstats_and_info,
           "input/modified/vsp_and_unt_counts_covstats_and_info.rds")
