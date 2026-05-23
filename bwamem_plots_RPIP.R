@@ -1,8 +1,16 @@
-####Some exploratory plots####
+#Plots for data imported via bwamem_and_pileup_import_RPIP.R
+
+library(tidyverse)
+library(paletteer)
+library(ggh4x)
+
 rpip_and_unt_counts_covstats_and_info <- read_rds(
   "input/modified/rpip_and_unt_counts_covstats_and_info.rds"
 )
 
+##################################
+#####Read counts vs. Coverage#####
+##################################
 rpipunt_50plus_by_taxid <- rpip_and_unt_counts_covstats_and_info %>% 
   group_by(Enrichment, UniqueID, Treatment, LIMS_ID, Fraction, Nanotrap_type,
            across(taxid:domain)) %>%
@@ -16,89 +24,150 @@ rpipunt_50plus_by_taxid <- rpip_and_unt_counts_covstats_and_info %>%
 
 #Number of mapped reads vs. reference coverage
 ggplot(rpipunt_50plus_by_taxid, 
-       aes(x = nmapped, y = prcov, colour = Treatment)) +
-  geom_point(alpha = 0.5, size = 1) +
+       aes(x = nmapped, y = prcov * 100, colour = Treatment)) +
+  geom_point(alpha = 0.7, size = 1) +
   scale_x_log10() +
   scale_y_log10() +
   theme_bw() +
+  scale_colour_paletteer_d("ggsci::springfield_simpsons") +
   facet_grid(rows = vars(Enrichment), cols = vars(domain), scales = "free_x") +
-  theme(strip.background = element_rect(fill = "white"))
+  theme(strip.background = element_rect(fill = "white")) +
+  xlab("Read count") +
+  ylab("Percent ref covered")
 
 
-weighted.mean(rpip_and_unt_counts_covstats_and_info$summary.after_dedup.read2_mean_length,
-              rpip_and_unt_counts_covstats_and_info$summary.after_dedup.total_reads/1000000)
+ggplot(rpipunt_50plus_by_taxid, 
+       aes(x = nmapped, y = prcov * 100, colour = class)) +
+  geom_point(alpha = 0.7, size = .7) +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_bw() +
+  scale_colour_paletteer_d("ggsci::default_igv") +
+  facet_nested(Enrichment ~ domain) +
+  theme(strip.background = element_rect(fill = "white")) +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  xlab("Read count") +
+  ylab("Percent ref covered")
 
-line_df <- data.frame(x = seq(min(rpipunt_50plus_by_taxid$nmapped),
-                              max(rpipunt_50plus_by_taxid$nmapped),
-                              length.out = 200)) %>%
-  #Study-wide mean read length:
-  mutate(y = 123.52 * x)
+##########################################
+#####Show read count vs.bases covered#####
+##########################################
+#Calculate the weighted mean read lengths:
+#(Dividing the total read count by a million prevents an integer overflow error)
+wm <- weighted.mean(
+ c(rpip_and_unt_counts_covstats_and_info$summary.after_dedup.read2_mean_length,
+   rpip_and_unt_counts_covstats_and_info$summary.after_dedup.read1_mean_length),
+ rep(rpip_and_unt_counts_covstats_and_info$summary.after_dedup.total_reads /
+       1000000,
+     2)
+  )
+
+
+#Generate a pseudo-data to draw a line corresponding to zero redundancy: 
+line_df <- data.frame(
+  x = seq(min(rpipunt_50plus_by_taxid$nmapped),
+  max(rpipunt_50plus_by_taxid$nmapped),
+  length.out = 200)
+  ) %>%
+  mutate(y = x * wm)
+  
 
 #Look at number of bases covered vs number of reads, facet by
 #Enrichment and domain
 ggplot(rpipunt_50plus_by_taxid, 
-       aes(x = nmapped, y = bases_covered, colour = Fraction)) +
-  geom_point(alpha = 0.5, size = 0.5) +
-  geom_line(data = line_df, aes(x = x, y = y), inherit.aes = FALSE) +
+       aes(x = nmapped, y = bases_covered, colour = class)) +
+  geom_point(alpha = 0.5, size = 0.7) +
+  geom_line(data = line_df, aes(x = x, y = y), inherit.aes = FALSE,
+            linetype = "dotted", colour = "grey30") +
   scale_x_log10() +
   scale_y_log10() +
-  scale_color_manual(values = c("deeppink", "goldenrod2", "green4")) +
+  scale_color_paletteer_d("ggsci::default_igv") +
   theme_bw() +
-  facet_grid(domain~Enrichment)
+  facet_grid(Enrichment~domain) +
+  theme(strip.background = element_rect(fill = "white")) +
+  xlab("Read count") +
+  ylab("Ref bases covered")
+
+###Hex version:
+ggplot(rpipunt_50plus_by_taxid, 
+       aes(x = nmapped, y = bases_covered)) +
+  geom_hex(aes(fill = after_stat(log10(count)))) +
+  geom_line(data = line_df, aes(x = x, y = y), inherit.aes = FALSE,
+            linetype = "21", colour = "grey25") +
+  scale_x_log10() +
+  scale_y_log10() +
+  scale_fill_paletteer_c("grDevices::Teal", direction = -1) +
+  theme_bw() +
+  facet_grid(Enrichment~domain) +
+  theme(strip.background = element_rect(fill = "white"),
+        legend.position = "none") +
+  xlab("Read count") +
+  ylab("Ref bases covered")
 
 
-ggplot(rpipunt_50plus_by_taxid, aes(x = bases_covered, y = mutation_count,
-                                                      colour = family)) +
+#########################
+#####Mutation plots######
+#########################
+#Get most common families:
+bact_countdf <- rpipunt_50plus_by_taxid %>%
+  filter(domain == "Bacteria") %>%
+  group_by(family) %>%
+  summarize(total_reads = sum(nmapped)) %>%
+  arrange(desc(total_reads))
+
+viru_countdf <- rpipunt_50plus_by_taxid %>%
+  filter(domain == "Viruses") %>%
+  group_by(family) %>%
+  summarize(total_reads = sum(nmapped)) %>%
+  arrange(desc(total_reads))
+
+fung_countdf <- rpipunt_50plus_by_taxid %>%
+  filter(domain == "Eukaryota") %>%
+  group_by(family) %>%
+  summarize(total_reads = sum(nmapped)) %>%
+  arrange(desc(total_reads))
+
+#Select top 10 bacterial families and all viral/fungal families (there are <10
+#total of each):
+topfam <- c(bact_countdf$family[1:10], fung_countdf$family, viru_countdf$family)
+
+#Plot mutations per covered base:
+ggplot(
+  filter(rpipunt_50plus_by_taxid,family %in% topfam), 
+  aes(x = bases_covered, y = mutation_count, colour = genus)) +
   geom_point(size = 0.5) +
   scale_x_log10() +
   scale_y_log10() +
-  facet_grid(domain~Enrichment) +
-  theme(legend.position = "none") +
-  scale_color_viridis_d(option = "H")
-
-rpip_and_unt_counts_and_covstats_by_taxid %>%
-  filter(domain == "Viruses") %>%
-  ggplot(aes(x = bases_covered, y = mutation_count,
-             colour = species)) +
-  geom_point() +
-  scale_x_log10() +
-  scale_y_log10() +
-  facet_wrap(~Enrichment) +
-  theme(legend.position = "none") +
-  scale_color_viridis_d(option = "H")
+  facet_grid(Enrichment~domain) +
+  scale_color_paletteer_d("ggsci::default_igv") +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  theme(strip.background = element_rect(fill = "white")) +
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  xlab("Ref bases covered") +
+  ylab("Unconserved bases")
 
 
-##############################
-
-fastp_info_table <- read_rds("input/modified/all_fastp_reports_dupdedup.rds") %>%
-  mutate(UniqueID = paste(LIMS_ID, Treatment, Enrichment, sep = "-"))
-
-rpip_and_unt_counts_covstats_and_info <- rpip_and_unt_counts_and_covstats %>%
-  left_join(fastp_info_table, by = c("UniqueID", "Enrichment")) %>%
-  mutate(RA_nmapped = nmapped / summary.after_dedup.total_reads,
-         RA_bases_covered = bases_covered / summary.after_dedup.total_bases)
-
-rpip_and_unt_counts_covstats_and_info_by_taxid <- rpip_and_unt_counts_and_covstats_by_taxid %>%
-  left_join(fastp_info_table, by = c("UniqueID", "Enrichment")) %>%
-  mutate(RA_nmapped = nmapped / summary.after_dedup.total_reads,
-         RA_bases_covered = bases_covered / summary.after_dedup.total_bases)
-
-
-write_rds(rpip_and_unt_counts_covstats_and_info, "input/modified/rpip_and_unt_counts_covstats_and_info.rds")
-write_rds(rpip_and_unt_counts_covstats_and_info_by_taxid, "input/modified/rpip_and_unt_counts_covstats_and_info_by_taxid.rds")
-rpip_and_unt_counts_covstats_and_info <- read_rds("input/modified/rpip_and_unt_counts_covstats_and_info.rds")
-rpip_and_unt_counts_covstats_and_info_by_taxid <- read_rds("input/modified/rpip_and_unt_counts_covstats_and_info_by_taxid.rds")
-
-####Some exploratory plots (RA)####
-rpip_virus_boxdf <- rpip_and_unt_counts_covstats_and_info_by_taxid %>%
+#################################################################
+#####Boxplots of RA, coverage, and  detection counts (virus)#####
+#################################################################
+#Make a boxplot df for convenience:
+rpip_virus_boxdf <- rpipunt_50plus_by_taxid %>%
+  left_join(rpip_and_unt_counts_covstats_and_info) %>%
   filter(domain == "Viruses") %>%
   filter(nmapped > 0)
 
+#Find how many samples each species was detected in:
 rpip_virus_detectcounts <- rpip_virus_boxdf %>%
+  select(species, LIMS_ID, Enrichment, Nanotrap_type, Fraction) %>%
+  distinct() %>%
+  ungroup() %>% #Ungrouping is important!
   count(species, Enrichment, name = "n")
 
-rpip_virus_boxplot <- ggplot(rpip_virus_boxdf, aes(x = species, y = RA_nmapped,
-                                                   colour = Enrichment, fill = Enrichment)) +
+#Relative abundance boxplot:
+rpip_virus_boxplot <- ggplot(
+  rpip_virus_boxdf,
+  aes(x = species, y = RA_nmapped, colour = Enrichment, fill = Enrichment)) +
   geom_boxplot(position = position_dodge(width = 1.2)) +
   scale_y_log10() +
   theme_bw() +
@@ -111,10 +180,10 @@ rpip_virus_boxplot <- ggplot(rpip_virus_boxdf, aes(x = species, y = RA_nmapped,
 
 rpip_virus_boxplot
 
-rpip_virus_coverage_boxplot <- ggplot(rpip_virus_boxdf, aes(x = species, 
-                                                            y = prcov * 100,
-                                                            colour = Enrichment,
-                                                            fill = Enrichment)) +
+#Percent ref coverage boxplot:
+rpip_virus_coverage_boxplot <- ggplot(
+  rpip_virus_boxdf,
+  aes(x = species, y = prcov * 100, colour = Enrichment, fill = Enrichment)) +
   geom_boxplot() +
   scale_y_log10() +
   theme_bw() +
@@ -127,14 +196,17 @@ rpip_virus_coverage_boxplot <- ggplot(rpip_virus_boxdf, aes(x = species,
 
 rpip_virus_coverage_boxplot
 
-rpip_virus_count_col <- ggplot(rpip_virus_detectcounts, aes(x = species, y = n, colour = Enrichment,
-                                                            fill = Enrichment)) +
+#Detection count boxplot:
+rpip_virus_count_col <- ggplot(
+  rpip_virus_detectcounts,
+  aes(x = species, y = n, colour = Enrichment, fill = Enrichment)) +
   geom_col(position = "dodge") +
   theme_bw() +
   ylim(0, 55) +
-  geom_text(aes(label = n), vjust = -0.5, position = position_dodge(0.9), size = 3,
-            show.legend = FALSE) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, face = "italic"),
+  geom_text(aes(label = n), vjust = -0.5, position = position_dodge(0.9),
+            size = 3, show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
+                                   face = "italic"),
         axis.title.x = element_blank()) +
   scale_fill_manual(values = c("#C3EDE7", "#E7CAA7")) +
   scale_colour_manual(values = c("#005C50", "#654500")) +
@@ -142,16 +214,21 @@ rpip_virus_count_col <- ggplot(rpip_virus_detectcounts, aes(x = species, y = n, 
 
 rpip_virus_count_col
 
+#Combine the boxplots:
 cowplot::plot_grid(rpip_virus_boxplot, 
                    rpip_virus_coverage_boxplot,
                    rpip_virus_count_col,
                    nrow = 3,
                    align = "v")
 
+#######################################
+#####Blob-style heatmaps (viruses)#####
+#######################################
 
-
-#Get number of samples in each treatment category:
-rpip_combo_count <- rpip_bacteria_boxdf %>%
+#Get number of samples in each treatment category for calculating detection 
+#ratios:
+rpip_combo_count <- rpip_and_unt_counts_covstats_and_info %>%
+  ungroup() %>%
   select(LIMS_ID, Enrichment, Nanotrap_type, Fraction) %>%
   distinct() %>%
   group_by(Enrichment, Nanotrap_type, Fraction) %>%
@@ -159,12 +236,12 @@ rpip_combo_count <- rpip_bacteria_boxdf %>%
 
 #Get detect counts within each treatment category:
 rpip_virus_detect_counts_by_category <- rpip_virus_boxdf %>%
+  ungroup() %>%
   select(species, LIMS_ID, Enrichment, Nanotrap_type, Fraction) %>%
   distinct() %>%
   count(species, Enrichment, Nanotrap_type, Fraction, name = "n")
 
-
-#Make a dataframe for a blob-style heatmap:
+#Make a dataframe for the blob-style heatmap:
 rpip_virus_heatblob_df <- rpip_virus_boxdf %>%
   group_by(LIMS_ID, Enrichment, Nanotrap_type, Fraction, species) %>%
   summarise(RA_nmapped = sum(RA_nmapped),
@@ -175,37 +252,52 @@ rpip_virus_heatblob_df <- rpip_virus_boxdf %>%
   left_join(rpip_virus_detect_counts_by_category) %>%
   left_join(rpip_combo_count) %>%
   mutate(pos_rate = n / nsamples) %>%
-  mutate(Enrichment = str_replace(Enrichment, "None", "No enrichment"),
-         Nanotrap_type = str_replace_all(Nanotrap_type, c("none" = "DE", "A$" = "NTA", "A&B" = "NTAB")),
-         Fraction = str_replace_all(Fraction, c("unfiltered" = "Unf", "filtrate" = "Fil", "retentate" = "Ret")))
+  mutate(Nanotrap_type = str_replace_all(Nanotrap_type,
+                                         c("none" = "DirEx", 
+                                           "A$" = "NTM-A",
+                                           "A&B" = "NTM-AB")),
+         Fraction = str_replace_all(Fraction,
+                                    c("unfiltered" = "Unf",
+                                      "filtrate" = "Fil",
+                                      "retentate" = "Ret")
+  )) %>%
+  filter(!is.na(RA_nmapped))
+
 
 
 #Version 1 (filled by RA)
-ggplot(rpip_virus_heatblob_df, aes(x = species, y = Fraction, fill = RA_nmapped)) +
+ggplot(rpip_virus_heatblob_df,
+       aes(x = species, y = Fraction, fill = RA_nmapped)) +
   geom_point(shape = 21, stroke = 1, aes(size = pos_rate)) +
-  #  scale_radius(transform = "log10") +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, face = "italic"),
-        axis.title = element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
+                                   face = "italic"),
+        axis.title = element_blank(),
+        strip.background = element_rect(fill = "white")) +
   facet_nested(Enrichment + Nanotrap_type ~ .)  +
-  scale_fill_viridis_c(option = "F", trans = "log10", name = "Mean relative\nabundance") +
+  scale_fill_viridis_c(option = "F", trans = "log10",
+                       name = "Mean relative\nabundance") +
   scale_size(name = "Detection\nrate")
 
 #Version 2 (Filled by reference coverage)
-ggplot(rpip_virus_heatblob_df, aes(x = species, y = Fraction, fill = prcov * 100)) +
+ggplot(rpip_virus_heatblob_df,
+       aes(x = species, y = Fraction, fill = prcov * 100)) +
   geom_point(shape = 21, stroke = 1, aes(size = pos_rate)) +
   #  scale_radius(transform = "log10") +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, face = "italic"),
-        axis.title = element_blank(), strip.background = element_rect(fill = "white")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
+                                   face = "italic"),
+        axis.title = element_blank(),
+        strip.background = element_rect(fill = "white")) +
   facet_nested(Enrichment + Nanotrap_type ~ .)  +
-  scale_fill_viridis_c(option = "F", trans = "log10", name = "Mean reference\ncoverage") +
+  scale_fill_viridis_c(option = "F", trans = "log10",
+                       name = "Mean reference\ncoverage") +
   scale_size(name = "Detection\nrate")
 
-
+#####UP TO HERE IS TESTED#####
 #####Plot Bacteria RA
-
 #This requires EdgeR to be run first 
+
 top_quartile_logfc <- rpip_taxa_signif %>%
   filter(abs(logFC) > quantile(abs(logFC), 0.75))
 
