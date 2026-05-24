@@ -8,18 +8,23 @@ rpip_and_unt_counts_covstats_and_info <- read_rds(
   "input/modified/rpip_and_unt_counts_covstats_and_info.rds"
 )
 
+edger_results_rpip <- read_rds("input/modified/rpip_bwamem_edger_results.rds")
+
 ##################################
 #####Read counts vs. Coverage#####
 ##################################
 rpipunt_50plus_by_taxid <- rpip_and_unt_counts_covstats_and_info %>% 
   group_by(Enrichment, UniqueID, Treatment, LIMS_ID, Fraction, Nanotrap_type,
-           across(taxid:domain)) %>%
+           across(taxid:domain), summary.after_dedup.total_bases, 
+           summary.after_dedup.total_reads) %>%
   summarize(bases_covered = sum(bases_covered),
             nmapped = sum(nmapped),
             total_mapped_bases = sum(total_mapped_bases),
             comb_rlength = sum(rlength),
             mutation_count = sum(mutation_count)) %>%
-  mutate(prcov = bases_covered / comb_rlength) %>%
+  mutate(prcov = bases_covered / comb_rlength,
+         RA_nmapped = nmapped / summary.after_dedup.total_reads,
+         RA_bases = total_mapped_bases / summary.after_dedup.total_bases) %>%
   filter(bases_covered >= 50)
 
 #Number of mapped reads vs. reference coverage
@@ -135,11 +140,11 @@ topfam <- c(bact_countdf$family[1:10], fung_countdf$family, viru_countdf$family)
 ggplot(
   filter(rpipunt_50plus_by_taxid,family %in% topfam), 
   aes(x = bases_covered, y = mutation_count, colour = genus)) +
-  geom_point(size = 0.5) +
+  geom_point(size = 0.7) +
   scale_x_log10() +
   scale_y_log10() +
   facet_grid(Enrichment~domain) +
-  scale_color_paletteer_d("ggsci::default_igv") +
+  scale_color_paletteer_d("ggsci::default_igv", direction = 1) +
   theme_bw() +
   theme(legend.position = "bottom") +
   theme(strip.background = element_rect(fill = "white")) +
@@ -153,7 +158,6 @@ ggplot(
 #################################################################
 #Make a boxplot df for convenience:
 rpip_virus_boxdf <- rpipunt_50plus_by_taxid %>%
-  left_join(rpip_and_unt_counts_covstats_and_info) %>%
   filter(domain == "Viruses") %>%
   filter(nmapped > 0)
 
@@ -294,30 +298,37 @@ ggplot(rpip_virus_heatblob_df,
                        name = "Mean reference\ncoverage") +
   scale_size(name = "Detection\nrate")
 
-#####UP TO HERE IS TESTED#####
-#####Plot Bacteria RA
-#This requires EdgeR to be run first 
+###########################
+#####Plot Bacteria RA######(Note: come up with better filtering criteria?)
+###########################
 
-top_quartile_logfc <- rpip_taxa_signif %>%
+#There are too many bacterial taxa to show on one plot, so select a subset
+#based on EdgeR significance and magnitude of fold-change:
+#This requires EdgeR to be run first 
+top_quartile_logfc <- edger_results_rpip %>%
+  filter(FDR <= 0.05) %>%
   filter(abs(logFC) > quantile(abs(logFC), 0.75))
 
-top_half_logfc <- rpip_taxa_signif %>%
+top_half_logfc <- edger_results_rpip %>%
+  filter(FDR <= 0.05) %>%
   filter(abs(logFC) > quantile(abs(logFC), 0.5))
 
 #Make a data frame for box-plotting the bacteria species with greatest FCs:
-rpip_bacteria_boxdf <- rpip_and_unt_counts_covstats_and_info_by_taxid %>%
+rpip_bacteria_boxdf <- rpipunt_50plus_by_taxid %>%
   filter(domain == "Bacteria") %>%
-  filter(nmapped > 0) %>%
-  filter(species %in% top_half_logfc$Species)
+  filter(nmapped > 0)# %>%
+#  filter(species %in% top_half_logfc$Species)
 
 #Count the number of samples each species was detected in:
 rpip_bacteria_detectcounts <- rpip_bacteria_boxdf %>%
+  ungroup() %>%
   select(genus, LIMS_ID, Enrichment, Nanotrap_type, Fraction) %>%
   distinct() %>%
   count(genus, Enrichment, name = "n")
 
-rpip_bacteria_boxplot <- ggplot(rpip_bacteria_boxdf, aes(x = genus, y = RA_nmapped,
-                                                         colour = Enrichment, fill = Enrichment)) +
+rpip_bacteria_boxplot <- ggplot(rpip_bacteria_boxdf, 
+                                aes(x = genus, y = RA_nmapped,
+                                    colour = Enrichment, fill = Enrichment)) +
   geom_boxplot() +
   scale_y_log10() +
   theme_bw() +
@@ -331,9 +342,10 @@ rpip_bacteria_boxplot <- ggplot(rpip_bacteria_boxdf, aes(x = genus, y = RA_nmapp
 
 rpip_bacteria_boxplot
 
-rpip_bacteria_coverage_boxplot <- ggplot(rpip_bacteria_boxdf, aes(x = genus, y = prcov * 100,
-                                                                  colour = Enrichment,
-                                                                  fill = Enrichment)) +
+rpip_bacteria_coverage_boxplot <- ggplot(rpip_bacteria_boxdf,
+                                         aes(x = genus, y = prcov * 100,
+                                             colour = Enrichment,
+                                             fill = Enrichment)) +
   geom_boxplot() +
   scale_y_log10() +
   theme_bw() +
@@ -346,18 +358,23 @@ rpip_bacteria_coverage_boxplot <- ggplot(rpip_bacteria_boxdf, aes(x = genus, y =
 
 rpip_bacteria_coverage_boxplot
 
-rpip_bacteria_count_col <- ggplot(rpip_bacteria_detectcounts, aes(x = genus, y = n, fill = Enrichment, colour = Enrichment)) +
+rpip_bacteria_count_col <- ggplot(rpip_bacteria_detectcounts,
+                                  aes(x = genus, y = n, fill = Enrichment,
+                                      colour = Enrichment)) +
   geom_col(position = "dodge") +
   theme_bw() +
   ylim(0, 55) +
-  geom_text(aes(label = n), vjust = -0.5, position = position_dodge(0.9), size = 2.5,
-            show.legend = FALSE) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, face = "italic"),
+  geom_text(aes(label = n), vjust = -0.5, position = position_dodge(0.9),
+            size = 2.5, show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5,
+                                   face = "italic"),
         axis.title.x = element_blank()) +
   scale_fill_manual(values = c("#C3EDE7", "#E7CAA7")) +
   scale_colour_manual(values = c("#005C50", "#654500")) +
   ylab("Detection count")
 
+
+rpip_bacteria_count_col
 
 cowplot::plot_grid(rpip_bacteria_boxplot, 
                    rpip_bacteria_coverage_boxplot, 
@@ -842,5 +859,47 @@ ggplot(barplot_rpip_fungi_full,
         strip.background = element_rect(fill = "white")) +
   scale_fill_paletteer_d("ggsci::default_igv", na.translate = FALSE) +
   guides(fill = guide_legend(nrow = 5))
+
+
+
+
+
+
+
+
+
+
+
+#############Volcano Plots (integrate later)###############
+
+#Volcano plot of families:
+ggplot(RPIP_results_with_domain, aes(x = logFC, y = -log10(FDR), colour = family, shape = Nanotrap_type)) + 
+  geom_point(alpha = 0.67, size = 2) +
+  geom_hline(yintercept = -log10(0.05)) +
+  theme_bw() +
+  #  scale_color_manual(values = c("#A50021FF", "#3FA0FFFF", "#FFAD72FF")) +
+  scale_shape_manual(values = c(1, 6, 4)) +
+  facet_grid(rows = "domain", scales = "free_y")
+
+#Volcano plot of domains:
+ggplot(RPIP_results_with_domain, aes(x = logFC, y = -log10(FDR), colour = domain, shape = Nanotrap_type)) + 
+  geom_point(alpha = 0.67, size = 2) +
+  geom_hline(yintercept = -log10(0.05)) +
+  theme_bw() +
+  #  scale_color_manual(values = c("#A50021FF", "#3FA0FFFF", "#FFAD72FF")) +
+  scale_shape_manual(values = c(1, 6, 4))
+
+#Filter to only taxa that are significantly enriched in RPIP samples:
+rpip_taxa_signif <- RPIP_results %>%
+  filter(FDR <= 0.05)
+
+
+largest_FCs <- rpip_taxa_signif %>%
+  group_by(Species) %>%
+  summarize(mean_logfc = mean(logFC)) %>%
+  arrange(desc(mean_logfc))
+
+RPIP_results_important <- RPIP_results %>%
+  filter(Species %in% most_important$Species)
 
 
