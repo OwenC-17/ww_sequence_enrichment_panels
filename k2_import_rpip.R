@@ -25,7 +25,7 @@ for (data in list.files(k2_rpip_main_dir,
     temporary <- generate_tax_table(data) %>% #temporary table is necessary so 
       #that only the current sample is included for filling in and ID assignment
       fill_tax_NAs() %>%
-      mutate(SampleID = data)
+      mutate(SampleID = basename(data))
     merged_rpip_reports_full <- bind_rows(merged_rpip_reports_full, temporary)
     rm(temporary) #save memory <3 
   }
