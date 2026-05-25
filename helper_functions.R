@@ -35,8 +35,8 @@ generate_tax_table = function(tax_report_tsv) {
   #Widen the k2 report so that the represent each taxonomic level in order:
   tax_table = pivot_wider(tax_report, names_from = taxLevel,
                           values_from = name) %>%
-    select("percentOfReads", "nodeAndChildren", "nodeOnly", "taxID", 
-           selected_tax_levels)
+    select(all_of(c("percentOfReads", "nodeAndChildren", "nodeOnly", "taxID", 
+           selected_tax_levels)))
   
   return(tax_table)
 }
