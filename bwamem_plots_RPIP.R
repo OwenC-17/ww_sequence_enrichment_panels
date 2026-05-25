@@ -447,8 +447,7 @@ ggplot(rpip_bacteria_heatblob_df,
 ################################
 rpip_fungi_boxdf <- rpipunt_50plus_by_taxid %>%
   filter(domain == "Eukaryota") %>%
-  filter(nmapped > 0)# %>%
-  filter(species %in% rpip_taxa_signif$Species)
+  filter(nmapped > 0)
 
 #Get number of samples where each species detected in each treatment category:
 rpip_fungi_detectcounts <- rpip_fungi_boxdf %>%
@@ -569,7 +568,8 @@ ggplot(rpip_fungi_heatblob_df,
         axis.title = element_blank(),
         strip.background = element_rect(fill = "white")) +
   facet_nested(Enrichment + Nanotrap_type ~ .) +
-  scale_fill_viridis_c(option = "F", trans = "log10", name = "Mean % reference\ncovered") +
+  scale_fill_viridis_c(option = "F", trans = "log10",
+                       name = "Mean % reference\ncovered") +
   scale_size(name = "Detection rate")
 
 ##########################
@@ -613,7 +613,7 @@ barplot_rpip_virus_full <- rpip_virus_boxdf %>%
                                                 "unfiltered" = "Unfil")),
          Nanotrap_type = str_replace_all(Nanotrap_type, c("^A$" = "NTM-A",
                                                           "A&B" = "NTM-AB",
-                                                          "none" = "DE")),
+                                                          "none" = "DirEx")),
          Enrichment = str_replace_all(Enrichment, "None", "Non-targeted"))
 
 
@@ -645,8 +645,11 @@ ggplot(barplot_rpip_no_bcov,
 ##################################
 #####Bacteria stacked barplot#####
 ##################################
+rpip_taxa_signif <- edger_results_rpip %>%
+  filter(FDR <= 0.05)
+
 #Make a data frame for box-plotting the bacteria species with greatest FCs:
-rpip_bacteria_bardf <- rpip_and_unt_counts_covstats_and_info_by_taxid %>%
+rpip_bacteria_bardf <- rpipunt_50plus_by_taxid %>%
   filter(domain == "Bacteria") %>%
   filter(nmapped > 0) %>%
   filter(species %in% rpip_taxa_signif$Species)
@@ -655,8 +658,12 @@ rpip_bacteria_bardf <- rpip_and_unt_counts_covstats_and_info_by_taxid %>%
 #Make a dataframe for easier barplot visualization:
 barplot_rpip_bacteria_full <- rpip_bacteria_bardf %>%
   right_join(barplot_design) %>%
-  mutate(Fraction = str_replace_all(Fraction, c("filtrate" = "Fil", "retentate" = "Ret", "unfiltered" = "Unfil")),
-         Nanotrap_type = str_replace_all(Nanotrap_type, c("^A$" = "NTM-A", "A&B" = "NTM-AB", "none" = "DE")),
+  mutate(Fraction = str_replace_all(Fraction, c("filtrate" = "Fil",
+                                                "retentate" = "Ret",
+                                                "unfiltered" = "Unfil")),
+         Nanotrap_type = str_replace_all(Nanotrap_type, c("^A$" = "NTM-A",
+                                                          "A&B" = "NTM-AB",
+                                                          "none" = "DirEx")),
          Enrichment = str_replace_all(Enrichment, "None", "Non-targeted"))
 
 #Make a stacked barplot of RGI-mapped reads, colored by family:  
@@ -685,15 +692,19 @@ ggplot(barplot_rpip_bacteria_full,
 #####Fungi stacked barplot#####
 ###############################
 #Make a data frame for box-plotting the bacteria species with greatest FCs:
-rpip_fungi_bardf <- rpip_and_unt_counts_covstats_and_info_by_taxid %>%
+rpip_fungi_bardf <- rpipunt_50plus_by_taxid %>%
   filter(domain == "Eukaryota") %>%
   filter(nmapped > 0)
 
 #Make a dataframe for easier barplot visualization:
 barplot_rpip_fungi_full <- rpip_fungi_bardf %>%
   right_join(barplot_design) %>%
-  mutate(Fraction = str_replace_all(Fraction, c("filtrate" = "Fil", "retentate" = "Ret", "unfiltered" = "Unfil")),
-         Nanotrap_type = str_replace_all(Nanotrap_type, c("^A$" = "NT-A", "A&B" = "NT-AB", "none" = "DirEx")),
+  mutate(Fraction = str_replace_all(Fraction, c("filtrate" = "Fil",
+                                                "retentate" = "Ret",
+                                                "unfiltered" = "Unfil")),
+         Nanotrap_type = str_replace_all(Nanotrap_type, c("^A$" = "NTM-A",
+                                                          "A&B" = "NTM-AB",
+                                                          "none" = "DirEx")),
          Enrichment = str_replace_all(Enrichment, "None", "Non-targeted"))
 
 #Make a stacked barplot of RGI-mapped reads, colored by resistance category:  
@@ -701,7 +712,7 @@ ggplot(barplot_rpip_fungi_full,
        aes(x = LIMS_ID, y = RA_nmapped, fill = genus)) + 
   geom_col(data = barplot_rpip_fungi_full %>% filter(!missing), colour = NA) +
   geom_text(data = barplot_rpip_fungi_full %>% filter(missing),
-            aes(label = "\u2020", y = 2e-04)) +
+            aes(label = "\u2020", y = 1e-05)) +
   facet_nested(Enrichment ~ Nanotrap_type + Fraction) +
   ylab("Relative abundance (mapped reads)") +
   xlab("Sample ID") +
@@ -715,47 +726,3 @@ ggplot(barplot_rpip_fungi_full,
         strip.background = element_rect(fill = "white")) +
   scale_fill_paletteer_d("ggsci::default_igv", na.translate = FALSE) +
   guides(fill = guide_legend(nrow = 5))
-
-
-
-
-
-
-
-
-
-
-
-#############Volcano Plots (integrate later)###############
-
-#Volcano plot of families:
-ggplot(RPIP_results_with_domain, aes(x = logFC, y = -log10(FDR), colour = family, shape = Nanotrap_type)) + 
-  geom_point(alpha = 0.67, size = 2) +
-  geom_hline(yintercept = -log10(0.05)) +
-  theme_bw() +
-  #  scale_color_manual(values = c("#A50021FF", "#3FA0FFFF", "#FFAD72FF")) +
-  scale_shape_manual(values = c(1, 6, 4)) +
-  facet_grid(rows = "domain", scales = "free_y")
-
-#Volcano plot of domains:
-ggplot(RPIP_results_with_domain, aes(x = logFC, y = -log10(FDR), colour = domain, shape = Nanotrap_type)) + 
-  geom_point(alpha = 0.67, size = 2) +
-  geom_hline(yintercept = -log10(0.05)) +
-  theme_bw() +
-  #  scale_color_manual(values = c("#A50021FF", "#3FA0FFFF", "#FFAD72FF")) +
-  scale_shape_manual(values = c(1, 6, 4))
-
-#Filter to only taxa that are significantly enriched in RPIP samples:
-rpip_taxa_signif <- RPIP_results %>%
-  filter(FDR <= 0.05)
-
-
-largest_FCs <- rpip_taxa_signif %>%
-  group_by(Species) %>%
-  summarize(mean_logfc = mean(logFC)) %>%
-  arrange(desc(mean_logfc))
-
-RPIP_results_important <- RPIP_results %>%
-  filter(Species %in% most_important$Species)
-
-
