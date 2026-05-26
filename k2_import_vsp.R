@@ -34,8 +34,8 @@ for (data in list.files(k2_vsp_main_dir,
 #format imported data:
 merged_vsp_reports_full <- merged_vsp_reports_full %>%
   separate(SampleID, c("QCSeqID", "LIMS_ID", "Treatment",
-                       NA, NA, NA, NA, NA, 
-                       "ribosomal", NA ), 
+                       NA, NA, NA, NA, 
+                       "ribosomal", "k2_confidence", NA ),  
            sep="(-|_)", 
            remove=FALSE) %>% #Make IDs into relevant parts
   mutate(site = str_replace_all(
@@ -44,6 +44,7 @@ merged_vsp_reports_full <- merged_vsp_reports_full %>%
       "(32976|32989|20040|22015)" = "OHare")
     )
   )
+
 
 write_csv(x = merged_vsp_reports_full,
           file = "input/modified/k2_vsp_reports_full.csv")
