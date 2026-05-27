@@ -123,6 +123,9 @@ rpip_DGElist <- DGEList(
   counts = rpip_species_count_table, lib.size = rpip_lib.size
 )
 
+#Save this object for the diversity analyses
+write_rds(rpip_DGElist, "input/modified/edgeR_bwamem_rpip_DGE.rds")
+
 #Find low-frequency taxa that don't give us enough information to be useful but 
 #mess with the analysis:
 rpip_lfRemover <- filterByExpr(
