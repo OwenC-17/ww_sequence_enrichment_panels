@@ -96,7 +96,8 @@ rpip_gene_group_data <- rpip_gene_group_data %>%
          gini_simpson = 1 - simpson,
          fisher = fisher.alpha(gene_community_matrix_noNA),
          chao1 = estimateR(gene_community_matrix_noNA)["S.chao1",]) %>%
-  mutate(Nanotrap_type = relevel(factor(Nanotrap_type, ordered = FALSE), ref = "DirEx"),
+  mutate(Nanotrap_type = relevel(factor(Nanotrap_type, ordered = FALSE), 
+                                 ref = "DirEx"),
          Fraction = relevel(factor(Fraction, ordered = FALSE), ref = "Unfil"))
 
 
@@ -288,6 +289,9 @@ plot(x = rpip_gene_group_data$LIMS_ID, y = E)
 anova(R2.REML)
 summary(R2.REML)
 
+###############
+#####Plots#####
+###############
 rpip_gene_group_data_plot <- rpip_gene_group_data %>%
   mutate(Fraction = factor(Fraction, levels = c("Fil", "Ret", "Unfil")))
 
@@ -309,7 +313,11 @@ ggplot(rpip_gene_group_data_plot,
   xlab("Fraction")
 
 
-#Nanotrap_type ans Nanotrap_type:Enrichment may be insignificant for Shannon
+######################
+#####Other models#####
+######################
+
+#Nanotrap_type and Nanotrap_type:Enrichment may be insignificant for Shannon
 SMod <- lme(shannon ~ 1 + Fraction + Nanotrap_type + Enrichment +
                          Fraction:Enrichment +
                          Nanotrap_type:Enrichment,
